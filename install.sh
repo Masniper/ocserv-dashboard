@@ -30,6 +30,7 @@ source ./scripts/lib.sh
 # ===============================
 # Default Configuration
 # ===============================
+ENV_FILE=".env"                                               # Environment file path
 HOST=$(hostname -I | awk '{print $1}')                        # Default host IP (local)
 SSL_CN="End-way-Cisco-VPN"                                    # Default SSL common name
 SSL_ORG="End-way"                                             # Default organization name
@@ -45,6 +46,11 @@ JWT_SECRET=$(openssl rand -hex 32)                            # JWT signing secr
 SSL_C=US                                                      # SSL Country iso2
 SSL_ST=CA                                                     # SSL State name
 SSL_L=SanFrancisco                                            # SSl City name
+POSTGRES_HOST=localhost                                       # PostgreSQL Host
+POSTGRES_PORT=5432                                            # PostgreSQL port
+POSTGRES_DB=ocserv                                            # POSTGRES_DB
+POSTGRES_USER=ocserv                                          # POSTGRES_USER
+POSTGRES_PASSWORD=ocserv-passwd                               # POSTGRES_PASSWORD
 
 # ===============================
 # Function: ensure_root
@@ -403,6 +409,17 @@ get_envs(){
     fi
     print_message highlight "✅ JWT_SECRET set (length: ${#JWT_SECRET})"
     printf "\n"
+
+    # SSL Expiration Days
+    read -rsp "Enter PostgreSQL DB password (leave blank to auto-generate): " pg_password
+    printf "\n"
+    if [[ -n "$pg_password" ]]; then
+        POSTGRES_PASSWORD="$pg_password"
+    else
+        POSTGRES_PASSWORD="$(generate_secret)"
+    fi
+    print_message highlight "✅ JWT_SECRET set (length: ${#JWT_SECRET})"
+    printf "\n"
 }
 
 # ===============================
@@ -436,7 +453,6 @@ get_site_lang() {
 #   Create .env file containing all environment variables
 # ===============================
 set_environment() {
-    ENV_FILE=".env"
     print_message info "Creating environment file at $ENV_FILE ..."
     cat > "$ENV_FILE" <<EOL
 HOST="${HOST}"
@@ -455,6 +471,12 @@ OCSERV_PORT="${OCSERV_PORT}"
 OCSERV_DNS="${OCSERV_DNS}"
 OCSERV_BANNER="${OCSERV_BANNER}"
 OCSERV_PRE_LOGIN_BANNER="${OCSERV_PRE_LOGIN_BANNER}"
+POSTGRES_HOST="${POSTGRES_HOST}"
+POSTGRES_PORT="${POSTGRES_PORT}"
+POSTGRES_DB="${POSTGRES_DB}"
+POSTGRES_USER="${POSTGRES_USER}"
+POSTGRES_PASSWORD="${POSTGRES_PASSWORD}"
+
 EOL
     print_message success "✅ Environment file created successfully in $ENV_FILE."
 }
@@ -518,7 +540,13 @@ get_interface() {
 #   Pull required Docker images and start Docker Compose stack
 # ===============================
 setup_docker() {
+    if grep -q "^POSTGRES_HOST=" "$ENV_FILE"; then
+        sed -i 's/^POSTGRES_HOST=.*/POSTGRES_HOST=postgres/' "$ENV_FILE"
+    else
+        echo "POSTGRES_HOST=postgres" >> "$ENV_FILE"
+    fi
     print_message info "🚀 Pulling required Docker images..."
+
     sudo docker pull golang:1.25.0
     sudo docker pull debian:trixie-slim
     sudo docker pull nginx:alpine
@@ -555,6 +583,9 @@ setup_systemd() {
     fi
 
     # Deploy backend and UI systemd services
+    export POSTGRES_DB POSTGRES_HOST POSTGRES_PORT POSTGRES_USER POSTGRES_PASSWORD
+
+    ./scripts/systemd_postgres.sh
     ./scripts/systemd_backend.sh
     ./scripts/systemd_ui.sh
 

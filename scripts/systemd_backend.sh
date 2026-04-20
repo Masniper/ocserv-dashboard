@@ -15,7 +15,7 @@
 #
 # Requirements:
 #   - lib.sh must exist and define:
-#       print_message(), log(), ok(), warn(), die()
+#       log(), ok(), warn(), die()
 #
 # Exit behavior:
 #   Script exits immediately on error (set -e)
@@ -99,6 +99,21 @@ if [[ -f ".env" ]]; then
   log "Copied environment file to $ENV_FILE"
 else
   warn ".env file not found, skipping environment copy"
+fi
+
+# -----------------------
+# Check to load old SQlite DB to PostgreSQL
+# -----------------------
+DB_DIR="/usr/local/bin/db"
+DB_FILE="${DB_DIR}/ocserv.db"
+
+if [ -f "$DB_FILE" ]; then
+    if "${BIN_DIR}"/api db-loader; then
+        mv "${DB_FILE}" \
+           "${DB_DIR}/loaded_to_postgres_ocserv.db"
+    else
+        exit 128
+    fi
 fi
 
 # -----------------------

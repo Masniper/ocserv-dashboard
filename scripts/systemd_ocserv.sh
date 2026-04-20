@@ -202,13 +202,13 @@ printf 'banner = "%s"\n' "$OCSERV_BANNER" | sudo tee -a "$OCSERV_CONF" > /dev/nu
 }
 
 if [[ ! -f "$OCSERV_CONF" ]]; then
-    print_message info "📄 ocserv.conf not found, creating new systemd config"
+    info "📄 ocserv.conf not found, creating new systemd config"
     write_ocserv_conf_systemd
 elif ! head -n 5 "$OCSERV_CONF" | grep -q "$MANAGED_HEADER"; then
-    print_message warning "⚠️ ocserv.conf not managed by dashboard, overwriting"
+    warn "⚠️ ocserv.conf not managed by dashboard, overwriting"
     write_ocserv_conf_systemd
 else
-    print_message success "✅ ocserv.conf already managed (systemd mode)"
+    ok "✅ ocserv.conf already managed (systemd mode)"
 fi
 
 sudo mkdir -p /etc/ocserv/defaults /etc/ocserv/groups /etc/ocserv/users
@@ -218,10 +218,10 @@ GROUP_CONF="/etc/ocserv/defaults/group.conf"
 sudo mkdir -p "$(dirname "$GROUP_CONF")"
 
 if [[ ! -f "$GROUP_CONF" ]]; then
-    print_message info "📄 Creating default group configuration"
+    info "📄 Creating default group configuration"
     sudo touch "${GROUP_CONF}"
 else
-    print_message success "✅ Default group configuration already exists"
+    ok "✅ Default group configuration already exists"
 fi
 
 # ==============================================================
