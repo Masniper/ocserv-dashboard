@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n';
 import { onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue';
+import { SystemdApi } from '@/api';
+import { getAuthorization } from '@/utils/request';
+import { useSnackbarStore } from '@/stores/snackbar';
+
+type ActionType = 'restart' | 'enable' | 'disable' | null;
+type StatusEmit = 'restarting' | 'enabling' | 'disabling' | null;
 
 type CurrentAction = {
-    value: string | null;
+    value: ActionType;
     expiresAt: number;
 };
 
@@ -14,55 +20,65 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['getState']);
-const { t } = useI18n();
+const emit = defineEmits<{
+    (e: 'getState'): void;
+    (e: 'currentStatus', value: StatusEmit): void;
+}>();
 
-const currentAction = ref<string | null>(null);
+
+const { t } = useI18n();
+const api = new SystemdApi();
+const snackbar = useSnackbarStore();
+
+const currentAction = ref<ActionType>(null);
 const remainingTime = ref<number>(0);
+
 const storageKey = 'current_action';
 const TTL = 2 * 60 * 1000; // 2 minutes
 
-let validateInterval: ReturnType<typeof setInterval> | null = null;
 let countdownInterval: ReturnType<typeof setInterval> | null = null;
 let hasExpired = false;
+
+const status = () => { emit('getState'); };
+
+// ✅ single source of truth for expiration
+const handleExpire = () => {
+    localStorage.removeItem(storageKey);
+    currentAction.value = null;
+    remainingTime.value = 0;
+
+    if (!hasExpired) {
+        hasExpired = true;
+        emit('currentStatus', null);
+        emit('getState');
+    }
+};
 
 const validateStorage = () => {
     const raw = localStorage.getItem(storageKey);
 
     if (!raw) {
-        currentAction.value = null;
-        remainingTime.value = 0;
+        handleExpire();
         return;
     }
 
     try {
         const data: CurrentAction = JSON.parse(raw);
-
         const diff = data.expiresAt - Date.now();
 
         if (diff <= 0) {
-            localStorage.removeItem(storageKey);
-            currentAction.value = null;
-            remainingTime.value = 0;
-
-            if (!hasExpired) {
-                hasExpired = true;
-                emit('getState');
-            }
-
+            handleExpire();
             return;
         }
 
         currentAction.value = data.value;
         remainingTime.value = Math.ceil(diff / 1000);
     } catch {
-        localStorage.removeItem(storageKey);
-        currentAction.value = null;
-        remainingTime.value = 0;
+        handleExpire();
     }
 };
 
-const setCurrentAction = (value: string) => {
+const setCurrentAction = (value: ActionType) => {
     const payload: CurrentAction = {
         value,
         expiresAt: Date.now() + TTL
@@ -73,30 +89,60 @@ const setCurrentAction = (value: string) => {
     hasExpired = false;
 };
 
-const status = () => {
-    emit('getState');
-};
-
 const restart = () => {
     if (props.state !== 'active') return;
 
-    emit('getState');
-    setCurrentAction('restart');
+    api.systemdRestartPost({
+        ...getAuthorization()
+    }).then((res) => {
+        snackbar.show({
+            id: 1,
+            message: res.data.message,
+            color: 'info',
+            timeout: 5000
+        });
+
+        emit('currentStatus', 'restarting');
+        setCurrentAction('restart');
+    });
 };
 
 const enable = () => {
     if (props.state !== 'inactive') return;
 
-    emit('getState');
-    setCurrentAction('enable');
+    api.systemdEnablePost({
+        ...getAuthorization()
+    }).then((res) => {
+        snackbar.show({
+            id: 1,
+            message: res.data.message,
+            color: 'info',
+            timeout: 5000
+        });
+
+        emit('currentStatus', 'enabling');
+        setCurrentAction('enable');
+    });
 };
 
 const disable = () => {
     if (props.state !== 'active') return;
 
-    emit('getState');
-    setCurrentAction('disable');
+    api.systemdDisablePost({
+        ...getAuthorization()
+    }).then((res) => {
+        snackbar.show({
+            id: 1,
+            message: res.data.message,
+            color: 'info',
+            timeout: 5000
+        });
+
+        emit('currentStatus', 'disabling');
+        setCurrentAction('disable');
+    });
 };
+
 
 onMounted(() => {
     validateStorage();
@@ -105,11 +151,7 @@ onMounted(() => {
 watch(
     currentAction,
     (val) => {
-        // reset intervals
-        if (validateInterval) clearInterval(validateInterval);
         if (countdownInterval) clearInterval(countdownInterval);
-
-        validateInterval = null;
         countdownInterval = null;
 
         if (!val) {
@@ -117,18 +159,11 @@ watch(
             return;
         }
 
-        // 30s validation
-        validateInterval = setInterval(() => {
-            validateStorage();
-        }, 30000);
-
-        // 1s countdown
         countdownInterval = setInterval(() => {
             const raw = localStorage.getItem(storageKey);
 
             if (!raw) {
-                currentAction.value = null;
-                remainingTime.value = 0;
+                handleExpire();
                 return;
             }
 
@@ -137,23 +172,13 @@ watch(
                 const diff = data.expiresAt - Date.now();
 
                 if (diff <= 0) {
-                    localStorage.removeItem(storageKey);
-                    currentAction.value = null;
-                    remainingTime.value = 0;
-
-                    if (!hasExpired) {
-                        hasExpired = true;
-                        emit('getState');
-                    }
-
+                    handleExpire();
                     return;
                 }
 
                 remainingTime.value = Math.ceil(diff / 1000);
             } catch {
-                localStorage.removeItem(storageKey);
-                currentAction.value = null;
-                remainingTime.value = 0;
+                handleExpire();
             }
         }, 1000);
     },
@@ -161,7 +186,6 @@ watch(
 );
 
 onBeforeUnmount(() => {
-    if (validateInterval) clearInterval(validateInterval);
     if (countdownInterval) clearInterval(countdownInterval);
 });
 </script>
@@ -169,7 +193,7 @@ onBeforeUnmount(() => {
 <template>
     <v-row align="center" justify="center" v-if="currentAction == null">
         <v-col cols="12" md="auto" v-if="props.state == 'active'">
-            <v-btn @click="status" color="info"> {{ t('RELOAD') }} {{ t('STATUS') }} </v-btn>
+            <v-btn @click="status" color="info"> {{ t('STATUS') }} </v-btn>
         </v-col>
 
         <v-col cols="12" md="auto" v-if="props.state == 'active'">

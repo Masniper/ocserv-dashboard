@@ -2,7 +2,14 @@
 import { useI18n } from 'vue-i18n';
 import { SystemdApi, type SystemdOcservSystemdStatus } from '@/api';
 import { getAuthorization } from '@/utils/request';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, type PropType, ref, watch } from 'vue';
+
+const props = defineProps({
+    currentStatus: {
+        type: String as PropType<'enabling' | 'disabling' | 'restarting' | null>,
+        default: null
+    }
+});
 
 const emit = defineEmits(['state']);
 
@@ -35,13 +42,22 @@ const statusColor = computed(() => {
     const unit = service.value.unit_file_state;
 
     if (active === 'active') return 'success';
-    if (active === 'activating') return 'info';
+    if (active === 'activating' || active === 'restarting') return 'info';
     if (active === 'deactivating') return 'warning';
     if (active === 'failed') return 'error';
     if (active === 'inactive' && unit === 'disabled') return 'grey';
+    if (active === 'enabling' || active === 'disabling') return 'info';
     if (unit === 'masked') return 'black';
 
     return 'secondary';
+});
+
+const displayState = computed(() => {
+    if (props.currentStatus === 'restarting') return 'restarting';
+    if (props.currentStatus === 'enabling') return 'enabling';
+    if (props.currentStatus === 'disabling') return 'disabling';
+
+    return service.value.active_state;
 });
 
 const formatMemory = (bytes?: number) => {
@@ -57,6 +73,17 @@ const formatCPU = (ns?: number) => {
     const sec = ns / 1e9;
     return `${sec.toFixed(2)} s`;
 };
+
+watch(
+    () => props.currentStatus,
+    (val, oldVal) => {
+        // when action completes → reload real state
+        if (oldVal && val === null) {
+            getStatus();
+        }
+    }
+);
+
 </script>
 
 <template>
@@ -69,7 +96,7 @@ const formatCPU = (ns?: number) => {
                 </v-col>
                 <v-col class="ma-0 pa-0 me-5">
                     <v-chip :color="statusColor">
-                        {{ service.active_state }}
+                        {{ displayState }}
                     </v-chip>
                 </v-col>
             </v-row>
