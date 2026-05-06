@@ -1,6 +1,6 @@
 package home
 
-func ParseServerStatus(flat map[string]interface{}) ServerStatusResponse {
+func ParseServerStatus(flat map[string]interface{}) OcservStatusResponse {
 	// Helper funcs
 	getStr := func(key string) string {
 		if v, ok := flat[key].(string); ok {
@@ -21,7 +21,7 @@ func ParseServerStatus(flat map[string]interface{}) ServerStatusResponse {
 		return 0
 	}
 
-	return ServerStatusResponse{
+	return OcservStatusResponse{
 		GeneralInfo: GeneralInfo{
 			ServerPID:           getInt("Server PID"),
 			SecModPID:           getInt("Sec-mod PID"),

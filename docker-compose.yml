@@ -38,6 +38,9 @@ services:
     devices:
       - /dev/net/tun:/dev/net/tun
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
       - /opt/ocserv_dashboard/docker_volumes/db:/usr/local/bin/db  # deprecated (sqlite)
       - /opt/ocserv_dashboard/docker_volumes/ocserv:/etc/ocserv
     ports:

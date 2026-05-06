@@ -51,7 +51,7 @@ type CurrentStats struct {
 	RawLastStatsReset int64 `json:"raw_last_stats_reset"`
 }
 
-type ServerStatusResponse struct {
+type OcservStatusResponse struct {
 	GeneralInfo  GeneralInfo  `json:"general_info"`
 	CurrentStats CurrentStats `json:"current_stats"`
 }
@@ -62,11 +62,36 @@ type GetHomeUser struct {
 }
 
 type GetHomeResponse struct {
-	ServerStatus     ServerStatusResponse         `json:"server_status" validate:"required"`
 	Statistics       *[]models.DailyTraffic       `json:"statistics" validate:"omitempty"`
 	Users            GetHomeUser                  `json:"users" validate:"omitempty"`
 	IPBans           *[]models.IPBanPoints        `json:"ip_bans" validate:"omitempty"`
 	TopBandwidthUser repository.TopBandwidthUsers `json:"top_bandwidth_user" validate:"omitempty"`
 	TotalBandwidth   repository.TotalBandwidths   `json:"total_bandwidth" validate:"omitempty"`
 	//IRoutes    *[]models.Iroute       `json:"iroutes" validate:"omitempty"` // has bug on version 1.2.4
+}
+
+type DockerService struct {
+	Name       string  `json:"name" validate:"required"`
+	CPUPercent float64 `json:"cpu_percent" validate:"omitempty"`
+	RAMPercent float64 `json:"ram_percent" validate:"omitempty"`
+}
+
+type ServerStatusResponse struct {
+	CPU struct {
+		UsedPercent float64 `json:"used_percent"`
+		Total       int     `json:"total"`
+	} `json:"cpu"`
+
+	RAM struct {
+		Used        uint64  `json:"used"`
+		Total       uint64  `json:"total"`
+		UsedPercent float64 `json:"used_percent"`
+	} `json:"ram"`
+
+	Swap struct {
+		Used        uint64  `json:"used"`
+		Total       uint64  `json:"total"`
+		UsedPercent float64 `json:"used_percent"`
+	} `json:"swap"`
+	//DockerServices []DockerService `json:"docker_services" validate:"omitempty"`
 }

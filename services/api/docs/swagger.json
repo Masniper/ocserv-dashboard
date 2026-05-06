@@ -347,6 +347,141 @@
                 }
             }
         },
+        "/home/container-stats": {
+            "get": {
+                "description": "Content of docker system usage stats (cpu, ram, swap)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Home"
+                ],
+                "summary": "Content of docker system usage stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer TOKEN",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/home.DockerService"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/request.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middlewares.Unauthorized"
+                        }
+                    }
+                }
+            }
+        },
+        "/home/ocserv-stats": {
+            "get": {
+                "description": "Content of ocserv server stats",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Home"
+                ],
+                "summary": "Content of ocserv server stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer TOKEN",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/home.OcservStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/request.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middlewares.Unauthorized"
+                        }
+                    }
+                }
+            }
+        },
+        "/home/system-stats": {
+            "get": {
+                "description": "Content of os system usage stats (cpu, ram, swap)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Home"
+                ],
+                "summary": "Content of os system usage stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer TOKEN",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/home.ServerStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/request.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middlewares.Unauthorized"
+                        }
+                    }
+                }
+            }
+        },
         "/occtl/commands": {
             "get": {
                 "description": "Occtl Commands",
@@ -3017,6 +3152,23 @@
                 }
             }
         },
+        "home.DockerService": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "cpu_percent": {
+                    "type": "number"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ram_percent": {
+                    "type": "number"
+                }
+            }
+        },
         "home.GeneralInfo": {
             "type": "object",
             "properties": {
@@ -3073,18 +3225,12 @@
         },
         "home.GetHomeResponse": {
             "type": "object",
-            "required": [
-                "server_status"
-            ],
             "properties": {
                 "ip_bans": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.IPBanPoints"
                     }
-                },
-                "server_status": {
-                    "$ref": "#/definitions/home.ServerStatusResponse"
                 },
                 "statistics": {
                     "type": "array",
@@ -3117,7 +3263,7 @@
                 }
             }
         },
-        "home.ServerStatusResponse": {
+        "home.OcservStatusResponse": {
             "type": "object",
             "properties": {
                 "current_stats": {
@@ -3125,6 +3271,50 @@
                 },
                 "general_info": {
                     "$ref": "#/definitions/home.GeneralInfo"
+                }
+            }
+        },
+        "home.ServerStatusResponse": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "object",
+                    "properties": {
+                        "total": {
+                            "type": "integer"
+                        },
+                        "used_percent": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "ram": {
+                    "type": "object",
+                    "properties": {
+                        "total": {
+                            "type": "integer"
+                        },
+                        "used": {
+                            "type": "integer"
+                        },
+                        "used_percent": {
+                            "type": "number"
+                        }
+                    }
+                },
+                "swap": {
+                    "type": "object",
+                    "properties": {
+                        "total": {
+                            "type": "integer"
+                        },
+                        "used": {
+                            "type": "integer"
+                        },
+                        "used_percent": {
+                            "type": "number"
+                        }
+                    }
                 }
             }
         },

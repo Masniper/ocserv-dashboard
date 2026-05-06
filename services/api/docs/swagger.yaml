@@ -144,6 +144,17 @@ definitions:
       raw_tx:
         type: integer
     type: object
+  home.DockerService:
+    properties:
+      cpu_percent:
+        type: number
+      name:
+        type: string
+      ram_percent:
+        type: number
+    required:
+    - name
+    type: object
   home.GeneralInfo:
     properties:
       _Up since:
@@ -186,8 +197,6 @@ definitions:
         items:
           $ref: '#/definitions/models.IPBanPoints'
         type: array
-      server_status:
-        $ref: '#/definitions/home.ServerStatusResponse'
       statistics:
         items:
           $ref: '#/definitions/models.DailyTraffic'
@@ -198,8 +207,6 @@ definitions:
         $ref: '#/definitions/repository.TotalBandwidths'
       users:
         $ref: '#/definitions/home.GetHomeUser'
-    required:
-    - server_status
     type: object
   home.GetHomeUser:
     properties:
@@ -210,12 +217,40 @@ definitions:
       total:
         type: integer
     type: object
-  home.ServerStatusResponse:
+  home.OcservStatusResponse:
     properties:
       current_stats:
         $ref: '#/definitions/home.CurrentStats'
       general_info:
         $ref: '#/definitions/home.GeneralInfo'
+    type: object
+  home.ServerStatusResponse:
+    properties:
+      cpu:
+        properties:
+          total:
+            type: integer
+          used_percent:
+            type: number
+        type: object
+      ram:
+        properties:
+          total:
+            type: integer
+          used:
+            type: integer
+          used_percent:
+            type: number
+        type: object
+      swap:
+        properties:
+          total:
+            type: integer
+          used:
+            type: integer
+          used_percent:
+            type: number
+        type: object
     type: object
   middlewares.PermissionDenied:
     properties:
@@ -1263,6 +1298,95 @@ paths:
           schema:
             $ref: '#/definitions/middlewares.Unauthorized'
       summary: Content of home
+      tags:
+      - Home
+  /home/container-stats:
+    get:
+      consumes:
+      - application/json
+      description: Content of docker system usage stats (cpu, ram, swap)
+      parameters:
+      - description: Bearer TOKEN
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/home.DockerService'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/request.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middlewares.Unauthorized'
+      summary: Content of docker system usage stats
+      tags:
+      - Home
+  /home/ocserv-stats:
+    get:
+      consumes:
+      - application/json
+      description: Content of ocserv server stats
+      parameters:
+      - description: Bearer TOKEN
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/home.OcservStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/request.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middlewares.Unauthorized'
+      summary: Content of ocserv server stats
+      tags:
+      - Home
+  /home/system-stats:
+    get:
+      consumes:
+      - application/json
+      description: Content of os system usage stats (cpu, ram, swap)
+      parameters:
+      - description: Bearer TOKEN
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/home.ServerStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/request.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middlewares.Unauthorized'
+      summary: Content of os system usage stats
       tags:
       - Home
   /occtl/commands:

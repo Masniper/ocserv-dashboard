@@ -7,5 +7,10 @@ import (
 
 func Routes(e *echo.Group) {
 	ctl := New()
-	e.GET("/home", ctl.Home, middlewares.AuthMiddleware())
+	g := e.Group("/home", middlewares.AuthMiddleware())
+
+	g.GET("", ctl.Home)
+	g.GET("/ocserv-stats", ctl.OcservStats)
+	g.GET("/system-stats", ctl.SystemUsageStats)
+	g.GET("/container-stats", ctl.ContainerUsageStats)
 }
