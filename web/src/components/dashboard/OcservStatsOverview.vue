@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n';
 import { HomeApi, type HomeCurrentStats, type HomeGeneralInfo, type HomeOcservStatusResponse } from '@/api';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { getAuthorization } from '@/utils/request';
+import { useServerStore } from '@/stores/config';
 
 const { t } = useI18n();
 
@@ -25,6 +26,8 @@ const getOcservStats = () => {
         }
     ).then((res) => {
         Object.assign(stats.value, res.data);
+        const serverStore = useServerStore();
+        serverStore.setStatus(res.data.general_info?.Status || 'active');
     });
 };
 

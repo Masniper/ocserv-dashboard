@@ -38,8 +38,6 @@ const groups = ref<string[]>([]);
 const api = new OcservUsersApi();
 
 const updateUser = (uid: string, data: OcservUserUpdateOcservUserData) => {
-    console.log('uid: ', uid);
-    console.log('data: ', data);
     loading.value = true;
     api.ocservUsersUidPatch({
         ...getAuthorization(),

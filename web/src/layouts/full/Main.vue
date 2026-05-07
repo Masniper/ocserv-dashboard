@@ -9,11 +9,16 @@ import NavCollapse from './vertical-sidebar/NavCollapse/NavCollapse.vue';
 import logoUrl from '@/assets/images/logo-circule.png';
 import { getSidebarItems } from '@/layouts/full/vertical-sidebar/sidebarItem';
 import LanguageDD from '@/layouts/full/vertical-header/LanguageDD.vue';
+import { useServerStore } from '@/stores/config';
 
 const sidebarMenu = getSidebarItems();
 
 const { mdAndDown } = useDisplay();
 const sDrawer = ref(true);
+
+const serverStore = useServerStore();
+
+const serverInfo = serverStore.getOcservVersion.split(', ');
 
 onMounted(() => {
     sDrawer.value = !mdAndDown.value;
@@ -60,15 +65,24 @@ watch(mdAndDown, (val) => {
                 </v-col>
             </v-row>
         </div>
+
         <div v-else class="hidden-md-and-down" style="margin-left: 310px !important; margin-right: 310px !important">
             <v-img :src="logoUrl" width="50px" />
         </div>
+
         <div class="d-flex align-center justify-space-between w-100">
+            <div :style="{ margin: !sDrawer ? 'auto' : '280px' }">
+                {{ serverInfo[0] }}
+                <br />
+                {{ serverInfo[1] }}
+            </div>
+
             <div>
                 <v-btn class="hidden-lg-and-up" icon size="small" variant="text" @click="sDrawer = !sDrawer">
                     <v-icon size="20">mdi-menu</v-icon>
                 </v-btn>
             </div>
+
             <div>
                 <LanguageDD />
                 <ProfileDD />

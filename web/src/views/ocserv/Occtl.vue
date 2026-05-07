@@ -119,7 +119,7 @@ const execute = () => {
         <v-col cols="12" md="12">
             <UiParentCard :title="`OCCTL ${t('HANDLER')}`">
                 <div class="pa-7 pt-1">
-                    <p class="text-body-1 text-muted" v-html="serverStore.occtlVersionInfo"></p>
+                    <p class="text-body-1 text-muted" v-html="serverStore.getOcctlVersion"></p>
                 </div>
 
                 <UiChildCard>

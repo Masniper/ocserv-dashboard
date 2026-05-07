@@ -26,7 +26,6 @@ const configArrayKeys = ['route', 'no-route', 'dns', 'split-dns'];
 watch(
     () => props.group,
     (newGroup) => {
-        console.log('newGroup: ', newGroup);
         resultArrayObj.value = Object.entries(newGroup?.config || {})
             .filter(([key]) => configArrayKeys.includes(key))
             .reduce<ModelsOcservGroupConfig>((acc, [key, val]) => {

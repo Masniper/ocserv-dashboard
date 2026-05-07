@@ -99,7 +99,7 @@ onUnmounted(() => {
                                 </v-progress-circular>
                             </v-col>
                             <v-col cols="12">
-                                <div class="text-subtitle-2">{{ t('CPU_USAGE') }}</div>
+                                <div class="text-subtitle-2 text-capitalize">{{ t('CPU_USAGE') }}</div>
                                 <div class="text-subtitle-2" dir="LTR">
                                     <span class="me-1">{{ systemUsage.cpu?.used_units }}</span>
                                     /
@@ -129,7 +129,7 @@ onUnmounted(() => {
                                 </v-progress-circular>
                             </v-col>
                             <v-col cols="12">
-                                <div class="text-subtitle-2">{{ t('RAM_USAGE') }}</div>
+                                <div class="text-subtitle-2 text-capitalize">{{ t('RAM_USAGE') }}</div>
                                 <div class="text-subtitle-2" dir="LTR">
                                     <span class="me-1">{{ systemUsage.ram?.used }}</span>
                                     /
@@ -159,7 +159,7 @@ onUnmounted(() => {
                                 </v-progress-circular>
                             </v-col>
                             <v-col cols="12">
-                                <div class="text-subtitle-2">{{ t('SWAP_USAGE') }}</div>
+                                <div class="text-subtitle-2 text-capitalize">{{ t('SWAP_USAGE') }}</div>
                                 <div class="text-subtitle-2" dir="LTR">
                                     <span class="me-1">{{ systemUsage.swap?.used }}</span>
                                     /
@@ -177,7 +177,7 @@ onUnmounted(() => {
     <!-- DOCKER CONTAINERS STATS -->
     <v-card elevation="10" class="mt-5" v-if="isDockerMod">
         <v-card-item>
-            <v-card-title class="my-lg-4 text-capitalize">{{ t('CONTAINERS_USAGE') }}</v-card-title>
+            <v-card-title class="my-lg-4 text-capitalize text-h5">{{ t('CONTAINERS_USAGE') }}</v-card-title>
             <v-row>
                 <!-- OCSERV CONTAINER -->
                 <v-col cols="12" lg="4" class="mb-lg-4">
@@ -202,7 +202,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('CPU_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('CPU_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.ocserv?.cpu?.used_units }}</span>
                                         /
@@ -232,7 +232,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('RAM_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('RAM_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.ocserv?.ram?.used }}</span>
                                         /
@@ -268,7 +268,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('CPU_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('CPU_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.log_stream?.cpu?.used_units }}</span>
                                         /
@@ -298,7 +298,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('RAM_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('RAM_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.log_stream?.ram?.used }}</span>
                                         /
@@ -334,7 +334,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('CPU_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('CPU_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.user_expiry?.cpu?.used_units }}</span>
                                         /
@@ -364,7 +364,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('RAM_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('RAM_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.user_expiry?.ram?.used }}</span>
                                         /
@@ -400,7 +400,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('CPU_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('CPU_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.postgres?.cpu?.used_units }}</span>
                                         /
@@ -430,7 +430,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('RAM_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('RAM_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.postgres?.ram?.used }}</span>
                                         /
@@ -466,7 +466,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('CPU_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('CPU_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.web?.cpu?.used_units }}</span>
                                         /
@@ -496,7 +496,7 @@ onUnmounted(() => {
                                     </v-progress-circular>
                                 </v-col>
                                 <v-col cols="12">
-                                    <div class="text-subtitle-2">{{ t('RAM_USAGE') }}</div>
+                                    <div class="text-subtitle-2 text-capitalize">{{ t('RAM_USAGE') }}</div>
                                     <div class="text-subtitle-2" dir="LTR">
                                         <span class="me-1">{{ dockerUsage.web?.ram?.used }}</span>
                                         /

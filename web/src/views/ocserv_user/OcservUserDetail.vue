@@ -50,7 +50,6 @@ const getUser = () => {
         ...getAuthorization(),
         uid: props.uid
     }).then((res) => {
-        console.log(res.data);
         result.value = res.data;
         resultArrayObj.value = Object.entries(res.data?.config || {})
             .filter(([key]) => configArrayKeys.includes(key))
