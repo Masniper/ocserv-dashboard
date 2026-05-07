@@ -100,6 +100,15 @@ definitions:
     - config
     - name
     type: object
+  home.CPU:
+    properties:
+      avg_percent:
+        type: number
+      total:
+        type: integer
+      used_units:
+        type: number
+    type: object
   home.CurrentStats:
     properties:
       _Last stats reset:
@@ -144,6 +153,36 @@ definitions:
       raw_tx:
         type: integer
     type: object
+  home.DockerService:
+    properties:
+      log_stream:
+        $ref: '#/definitions/home.DockerStats'
+      ocserv:
+        $ref: '#/definitions/home.DockerStats'
+      postgres:
+        $ref: '#/definitions/home.DockerStats'
+      user_expiry:
+        $ref: '#/definitions/home.DockerStats'
+      web:
+        $ref: '#/definitions/home.DockerStats'
+    required:
+    - log_stream
+    - ocserv
+    - postgres
+    - user_expiry
+    - web
+    type: object
+  home.DockerStats:
+    properties:
+      cpu:
+        $ref: '#/definitions/home.CPU'
+      name:
+        type: string
+      ram:
+        $ref: '#/definitions/home.RAM'
+    required:
+    - name
+    type: object
   home.GeneralInfo:
     properties:
       _Up since:
@@ -186,8 +225,6 @@ definitions:
         items:
           $ref: '#/definitions/models.IPBanPoints'
         type: array
-      server_status:
-        $ref: '#/definitions/home.ServerStatusResponse'
       statistics:
         items:
           $ref: '#/definitions/models.DailyTraffic'
@@ -198,8 +235,6 @@ definitions:
         $ref: '#/definitions/repository.TotalBandwidths'
       users:
         $ref: '#/definitions/home.GetHomeUser'
-    required:
-    - server_status
     type: object
   home.GetHomeUser:
     properties:
@@ -210,12 +245,39 @@ definitions:
       total:
         type: integer
     type: object
-  home.ServerStatusResponse:
+  home.OcservStatusResponse:
     properties:
       current_stats:
         $ref: '#/definitions/home.CurrentStats'
       general_info:
         $ref: '#/definitions/home.GeneralInfo'
+    type: object
+  home.RAM:
+    properties:
+      total:
+        type: number
+      used:
+        type: number
+      used_percent:
+        type: number
+    type: object
+  home.ServerStatusResponse:
+    properties:
+      cpu:
+        $ref: '#/definitions/home.CPU'
+      ram:
+        $ref: '#/definitions/home.RAM'
+      swap:
+        $ref: '#/definitions/home.Swap'
+    type: object
+  home.Swap:
+    properties:
+      total:
+        type: number
+      used:
+        type: number
+      used_percent:
+        type: number
     type: object
   middlewares.PermissionDenied:
     properties:
@@ -372,6 +434,16 @@ definitions:
         description: 'Maximum transmit bandwidth in bytes per second. Example: ''200000''
           for 200 KB/s'
         type: integer
+    type: object
+  models.OcservInfo:
+    properties:
+      status:
+        type: string
+      version:
+        $ref: '#/definitions/models.ServerVersion'
+    required:
+    - status
+    - version
     type: object
   models.OcservUser:
     properties:
@@ -534,7 +606,7 @@ definitions:
     properties:
       occtl_version:
         type: string
-      version:
+      ocserv_version:
         type: string
     type: object
   models.System:
@@ -1265,6 +1337,95 @@ paths:
       summary: Content of home
       tags:
       - Home
+  /home/container-stats:
+    get:
+      consumes:
+      - application/json
+      description: Content of docker system usage stats (cpu, ram, swap)
+      parameters:
+      - description: Bearer TOKEN
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/home.DockerService'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/request.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middlewares.Unauthorized'
+      summary: Content of docker system usage stats
+      tags:
+      - Home
+  /home/ocserv-stats:
+    get:
+      consumes:
+      - application/json
+      description: Content of ocserv server stats
+      parameters:
+      - description: Bearer TOKEN
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/home.OcservStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/request.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middlewares.Unauthorized'
+      summary: Content of ocserv server stats
+      tags:
+      - Home
+  /home/system-stats:
+    get:
+      consumes:
+      - application/json
+      description: Content of os system usage stats (cpu, ram, swap)
+      parameters:
+      - description: Bearer TOKEN
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/home.ServerStatusResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/request.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/middlewares.Unauthorized'
+      summary: Content of os system usage stats
+      tags:
+      - Home
   /occtl/commands:
     get:
       consumes:
@@ -1314,7 +1475,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/models.ServerVersion'
+            $ref: '#/definitions/models.OcservInfo'
         "400":
           description: Bad Request
           schema:

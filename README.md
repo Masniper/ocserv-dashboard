@@ -18,6 +18,7 @@ Easily manage users, groups, and server configurations while keeping your VPN se
 
 <p align="center">
   <img alt="Dashboard Home Page Preview" src="docs/home.png" width="800"/>
+  <img alt="Project Logo" src="docs/home_stats.png" width="800"/>
   <br>
   <i>Dashboard UI Preview</i>
 </p>

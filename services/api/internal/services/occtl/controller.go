@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/mmtaee/ocserv-dashboard/api/internal/repository"
+	"github.com/mmtaee/ocserv-dashboard/api/internal/services/home"
 	"github.com/mmtaee/ocserv-dashboard/api/pkg/request"
+	"github.com/mmtaee/ocserv-dashboard/common/models"
+	"github.com/mmtaee/ocserv-dashboard/common/pkg/logger"
 	"net/http"
 	"strings"
 )
@@ -30,11 +33,35 @@ func New() *Controller {
 // @Accept       json
 // @Produce      json
 // @Failure      400 {object} request.ErrorResponse
-// @Success      200  {object}  models.ServerVersion
+// @Success      200  {object}  models.OcservInfo
 // @Router       /occtl/server_info [get]
 func (ctl *Controller) ServerInfo(c echo.Context) error {
-	version := ctl.occtlRepo.Version()
-	return c.JSON(http.StatusOK, version)
+	serverVersion := ctl.occtlRepo.Version()
+	info := models.OcservInfo{
+		Version: serverVersion,
+		Status:  "error",
+	}
+
+	serverStatus, err := ctl.occtlRepo.Status()
+	if err != nil {
+		logger.Error("Get server status error", err)
+		info.Status = "error"
+		return c.JSON(http.StatusOK, info)
+	}
+
+	serverStatusMap, ok := serverStatus.(map[string]interface{})
+	if !ok {
+		logger.Error("Invalid server status format")
+		info.Status = "error"
+		return c.JSON(http.StatusOK, info)
+	}
+
+	status := home.ParseServerStatus(serverStatusMap)
+	if status.GeneralInfo.Status != "" {
+		info.Status = status.GeneralInfo.Status
+	}
+
+	return c.JSON(http.StatusOK, info)
 }
 
 // Commands 	 Occtl Commands

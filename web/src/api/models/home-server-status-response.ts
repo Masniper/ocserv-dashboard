@@ -15,10 +15,13 @@
 
 // May contain unused imports in some cases
 // @ts-ignore
-import type { HomeCurrentStats } from './home-current-stats';
+import type { HomeCPU } from './home-cpu';
 // May contain unused imports in some cases
 // @ts-ignore
-import type { HomeGeneralInfo } from './home-general-info';
+import type { HomeRAM } from './home-ram';
+// May contain unused imports in some cases
+// @ts-ignore
+import type { HomeSwap } from './home-swap';
 
 /**
  * 
@@ -28,15 +31,21 @@ import type { HomeGeneralInfo } from './home-general-info';
 export interface HomeServerStatusResponse {
     /**
      * 
-     * @type {HomeCurrentStats}
+     * @type {HomeCPU}
      * @memberof HomeServerStatusResponse
      */
-    'current_stats'?: HomeCurrentStats;
+    'cpu'?: HomeCPU;
     /**
      * 
-     * @type {HomeGeneralInfo}
+     * @type {HomeRAM}
      * @memberof HomeServerStatusResponse
      */
-    'general_info'?: HomeGeneralInfo;
+    'ram'?: HomeRAM;
+    /**
+     * 
+     * @type {HomeSwap}
+     * @memberof HomeServerStatusResponse
+     */
+    'swap'?: HomeSwap;
 }
 

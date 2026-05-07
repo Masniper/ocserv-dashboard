@@ -4,6 +4,7 @@ export interface ConfigState {
 }
 
 export interface ServerState {
-    Version: string;
+    OcservVersion: string;
     OcctlVersion: string;
+    Status: string;
 }

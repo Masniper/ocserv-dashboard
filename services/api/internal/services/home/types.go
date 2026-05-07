@@ -51,7 +51,7 @@ type CurrentStats struct {
 	RawLastStatsReset int64 `json:"raw_last_stats_reset"`
 }
 
-type ServerStatusResponse struct {
+type OcservStatusResponse struct {
 	GeneralInfo  GeneralInfo  `json:"general_info"`
 	CurrentStats CurrentStats `json:"current_stats"`
 }
@@ -62,11 +62,48 @@ type GetHomeUser struct {
 }
 
 type GetHomeResponse struct {
-	ServerStatus     ServerStatusResponse         `json:"server_status" validate:"required"`
 	Statistics       *[]models.DailyTraffic       `json:"statistics" validate:"omitempty"`
 	Users            GetHomeUser                  `json:"users" validate:"omitempty"`
 	IPBans           *[]models.IPBanPoints        `json:"ip_bans" validate:"omitempty"`
 	TopBandwidthUser repository.TopBandwidthUsers `json:"top_bandwidth_user" validate:"omitempty"`
 	TotalBandwidth   repository.TotalBandwidths   `json:"total_bandwidth" validate:"omitempty"`
 	//IRoutes    *[]models.Iroute       `json:"iroutes" validate:"omitempty"` // has bug on version 1.2.4
+}
+
+type CPU struct {
+	AvgPercent float64 `json:"avg_percent"`
+	UsedUnits  float64 `json:"used_units"`
+	Total      int     `json:"total"`
+}
+
+type RAM struct {
+	Used        float64 `json:"used"`
+	Total       float64 `json:"total"`
+	UsedPercent float64 `json:"used_percent"`
+}
+
+type Swap struct {
+	Used        float64 `json:"used"`
+	Total       float64 `json:"total"`
+	UsedPercent float64 `json:"used_percent"`
+}
+
+type DockerStats struct {
+	Name string `json:"name" validate:"required"`
+	CPU  CPU    `json:"cpu" validate:"omitempty"`
+	RAM  RAM    `json:"ram" validate:"omitempty"`
+}
+
+type DockerService struct {
+	Postgres   DockerStats `json:"postgres" validate:"required"`
+	Ocserv     DockerStats `json:"ocserv" validate:"required"`
+	LogStream  DockerStats `json:"log_stream" validate:"required"`
+	UserExpiry DockerStats `json:"user_expiry" validate:"required"`
+	Web        DockerStats `json:"web" validate:"required"`
+}
+
+type ServerStatusResponse struct {
+	CPU  CPU  `json:"cpu"`
+	RAM  RAM  `json:"ram"`
+	Swap Swap `json:"swap"`
 }

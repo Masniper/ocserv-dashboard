@@ -82,7 +82,6 @@ const removeRoute = (key: string, value: string) => {
 watch(
     () => props.initData,
     () => {
-        console.log('props.initData: ', props.initData);
         if (props.initData !== undefined) {
             Object.assign(createData, props.initData);
             isUpdate.value = true;

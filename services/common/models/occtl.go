@@ -25,8 +25,13 @@ type OnlineUserSession struct {
 }
 
 type ServerVersion struct {
-	Version      string `json:"version"`
-	OcctlVersion string `json:"occtl_version"`
+	OcservVersion string `json:"ocserv_version"`
+	OcctlVersion  string `json:"occtl_version"`
+}
+
+type OcservInfo struct {
+	Version *ServerVersion `json:"version" validate:"required"`
+	Status  string         `json:"status" validate:"required"`
 }
 
 type IPBanPoints struct {

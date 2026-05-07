@@ -24,7 +24,7 @@ import { BASE_PATH, COLLECTION_FORMATS, type RequestArgs, BaseAPI, RequiredError
 // @ts-ignore
 import type { MiddlewaresUnauthorized } from '../models';
 // @ts-ignore
-import type { ModelsServerVersion } from '../models';
+import type { ModelsOcservInfo } from '../models';
 // @ts-ignore
 import type { RequestErrorResponse } from '../models';
 /**
@@ -142,7 +142,7 @@ export const OCCTLApiFp = function(configuration?: Configuration) {
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async occtlServerInfoGet(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ModelsServerVersion>> {
+        async occtlServerInfoGet(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<ModelsOcservInfo>> {
             const localVarAxiosArgs = await localVarAxiosParamCreator.occtlServerInfoGet(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['OCCTLApi.occtlServerInfoGet']?.[localVarOperationServerIndex]?.url;
@@ -174,7 +174,7 @@ export const OCCTLApiFactory = function (configuration?: Configuration, basePath
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        occtlServerInfoGet(options?: RawAxiosRequestConfig): AxiosPromise<ModelsServerVersion> {
+        occtlServerInfoGet(options?: RawAxiosRequestConfig): AxiosPromise<ModelsOcservInfo> {
             return localVarFp.occtlServerInfoGet(options).then((request) => request(axios, basePath));
         },
     };

@@ -223,8 +223,8 @@ func (o *OcservOcctl) Version() *models.ServerVersion {
 	version := utils.GetOcservVersion()
 	occtlVersion := utils.GetOCCTLVersion()
 	return &models.ServerVersion{
-		Version:      version,
-		OcctlVersion: occtlVersion,
+		OcservVersion: version,
+		OcctlVersion:  occtlVersion,
 	}
 }
 

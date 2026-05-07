@@ -222,8 +222,6 @@ func ParseTypedValue(s string) interface{} {
 }
 
 // GetOcservVersion runs "ocserv --version" and extracts the semantic
-// version number (X.Y.Z) using regex. Returns an empty string if
-// the command fails or no version is found.
 func GetOcservVersion() string {
 	cmd := exec.Command("ocserv", "--version")
 
@@ -237,15 +235,32 @@ func GetOcservVersion() string {
 		logger.Error("Command error: %v", err)
 		return ""
 	}
+	
 	// Combine stdout and stderr for pattern matching
 	fullOutput := out.String() + stderr.String()
-	// Regex to find the version number
-	re := regexp.MustCompile(`OpenConnect VPN Server\s+([0-9]+\.[0-9]+\.[0-9]+)`)
-	match := re.FindStringSubmatch(fullOutput)
-	if len(match) >= 2 {
-		return strings.TrimSpace(match[1])
+
+	// Get Ocserv version with full text
+	ocservRe := regexp.MustCompile(`(OpenConnect VPN Server\s+[0-9]+\.[0-9]+\.[0-9]+)`)
+	ocservMatch := ocservRe.FindStringSubmatch(fullOutput)
+
+	// Get GnuTLS version
+	gnutlsRe := regexp.MustCompile(`(GnuTLS version:\s+[0-9]+\.[0-9]+\.[0-9]+)`)
+	gnutlsMatch := gnutlsRe.FindStringSubmatch(fullOutput)
+
+	// Build the result string
+	var result string
+	if len(ocservMatch) >= 2 {
+		result = ocservMatch[1]
 	}
-	return ""
+
+	if len(gnutlsMatch) >= 2 {
+		if result != "" {
+			result += ", "
+		}
+		result += gnutlsMatch[1]
+	}
+
+	return result
 }
 
 // GetOCCTLVersion runs "occtl --version" and extracts its version output.

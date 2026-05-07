@@ -354,6 +354,141 @@ const docTemplate = `{
                 }
             }
         },
+        "/home/container-stats": {
+            "get": {
+                "description": "Content of docker system usage stats (cpu, ram, swap)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Home"
+                ],
+                "summary": "Content of docker system usage stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer TOKEN",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/home.DockerService"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/request.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middlewares.Unauthorized"
+                        }
+                    }
+                }
+            }
+        },
+        "/home/ocserv-stats": {
+            "get": {
+                "description": "Content of ocserv server stats",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Home"
+                ],
+                "summary": "Content of ocserv server stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer TOKEN",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/home.OcservStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/request.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middlewares.Unauthorized"
+                        }
+                    }
+                }
+            }
+        },
+        "/home/system-stats": {
+            "get": {
+                "description": "Content of os system usage stats (cpu, ram, swap)",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Home"
+                ],
+                "summary": "Content of os system usage stats",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer TOKEN",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/home.ServerStatusResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/request.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/middlewares.Unauthorized"
+                        }
+                    }
+                }
+            }
+        },
         "/occtl/commands": {
             "get": {
                 "description": "Occtl Commands",
@@ -428,7 +563,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/models.ServerVersion"
+                            "$ref": "#/definitions/models.OcservInfo"
                         }
                     },
                     "400": {
@@ -2958,6 +3093,20 @@ const docTemplate = `{
                 }
             }
         },
+        "home.CPU": {
+            "type": "object",
+            "properties": {
+                "avg_percent": {
+                    "type": "number"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "used_units": {
+                    "type": "number"
+                }
+            }
+        },
         "home.CurrentStats": {
             "type": "object",
             "properties": {
@@ -3024,6 +3173,50 @@ const docTemplate = `{
                 }
             }
         },
+        "home.DockerService": {
+            "type": "object",
+            "required": [
+                "log_stream",
+                "ocserv",
+                "postgres",
+                "user_expiry",
+                "web"
+            ],
+            "properties": {
+                "log_stream": {
+                    "$ref": "#/definitions/home.DockerStats"
+                },
+                "ocserv": {
+                    "$ref": "#/definitions/home.DockerStats"
+                },
+                "postgres": {
+                    "$ref": "#/definitions/home.DockerStats"
+                },
+                "user_expiry": {
+                    "$ref": "#/definitions/home.DockerStats"
+                },
+                "web": {
+                    "$ref": "#/definitions/home.DockerStats"
+                }
+            }
+        },
+        "home.DockerStats": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "cpu": {
+                    "$ref": "#/definitions/home.CPU"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ram": {
+                    "$ref": "#/definitions/home.RAM"
+                }
+            }
+        },
         "home.GeneralInfo": {
             "type": "object",
             "properties": {
@@ -3080,18 +3273,12 @@ const docTemplate = `{
         },
         "home.GetHomeResponse": {
             "type": "object",
-            "required": [
-                "server_status"
-            ],
             "properties": {
                 "ip_bans": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/models.IPBanPoints"
                     }
-                },
-                "server_status": {
-                    "$ref": "#/definitions/home.ServerStatusResponse"
                 },
                 "statistics": {
                     "type": "array",
@@ -3124,7 +3311,7 @@ const docTemplate = `{
                 }
             }
         },
-        "home.ServerStatusResponse": {
+        "home.OcservStatusResponse": {
             "type": "object",
             "properties": {
                 "current_stats": {
@@ -3132,6 +3319,48 @@ const docTemplate = `{
                 },
                 "general_info": {
                     "$ref": "#/definitions/home.GeneralInfo"
+                }
+            }
+        },
+        "home.RAM": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "number"
+                },
+                "used": {
+                    "type": "number"
+                },
+                "used_percent": {
+                    "type": "number"
+                }
+            }
+        },
+        "home.ServerStatusResponse": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "$ref": "#/definitions/home.CPU"
+                },
+                "ram": {
+                    "$ref": "#/definitions/home.RAM"
+                },
+                "swap": {
+                    "$ref": "#/definitions/home.Swap"
+                }
+            }
+        },
+        "home.Swap": {
+            "type": "object",
+            "properties": {
+                "total": {
+                    "type": "number"
+                },
+                "used": {
+                    "type": "number"
+                },
+                "used_percent": {
+                    "type": "number"
                 }
             }
         },
@@ -3332,6 +3561,21 @@ const docTemplate = `{
                 "tx-data-per-sec": {
                     "description": "Maximum transmit bandwidth in bytes per second. Example: '200000' for 200 KB/s",
                     "type": "integer"
+                }
+            }
+        },
+        "models.OcservInfo": {
+            "type": "object",
+            "required": [
+                "status",
+                "version"
+            ],
+            "properties": {
+                "status": {
+                    "type": "string"
+                },
+                "version": {
+                    "$ref": "#/definitions/models.ServerVersion"
                 }
             }
         },
@@ -3546,7 +3790,7 @@ const docTemplate = `{
                 "occtl_version": {
                     "type": "string"
                 },
-                "version": {
+                "ocserv_version": {
                     "type": "string"
                 }
             }

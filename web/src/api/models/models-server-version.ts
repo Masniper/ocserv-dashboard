@@ -31,6 +31,6 @@ export interface ModelsServerVersion {
      * @type {string}
      * @memberof ModelsServerVersion
      */
-    'version'?: string;
+    'ocserv_version'?: string;
 }
 

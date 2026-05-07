@@ -4,8 +4,9 @@ import type { ConfigState, ServerState } from '@/types/storeTypes/StoreConfigTyp
 
 export const useServerStore = defineStore('server', {
     state: (): ServerState => ({
-        Version: '',
-        OcctlVersion: ''
+        OcservVersion: '',
+        OcctlVersion: '',
+        Status: ''
     }),
     actions: {
         async getServerInfo() {
@@ -14,16 +15,20 @@ export const useServerStore = defineStore('server', {
                 .occtlServerInfoGet()
                 .then((res) => {
                     if (res.data) {
-                        this.Version = res.data.version || '';
-                        this.OcctlVersion = (res.data.occtl_version || '').replace(/\n/g, '<br />');
+                        this.OcservVersion = res.data.version.ocserv_version || '';
+                        this.OcctlVersion = (res.data.version.occtl_version || '').replace(/\n/g, '<br />');
                     }
                 })
                 .catch(() => {});
+        },
+        async setStatus(status: string) {
+            this.Status = status;
         }
     },
     getters: {
-        versionInfo: (state) => state.Version,
-        occtlVersionInfo: (state) => state.OcctlVersion
+        getOcservVersion: (state) => state.OcservVersion,
+        getOcctlVersion: (state) => state.OcctlVersion,
+        getStatus: (state) => state.Status
     }
 });
 
