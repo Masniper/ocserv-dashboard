@@ -605,6 +605,16 @@ setup_systemd() {
                 ok "✅ Ocserv is installed and properly configured."
             fi
         fi
+
+        # Ensure required ocserv directories and default group config exist.
+        # The dashboard backend reads /etc/ocserv/defaults/group.conf at runtime;
+        # missing files raise "no such file or directory" errors in the panel.
+        sudo mkdir -p /etc/ocserv/defaults /etc/ocserv/groups /etc/ocserv/users
+        if [[ ! -f /etc/ocserv/defaults/group.conf ]]; then
+            sudo touch /etc/ocserv/defaults/group.conf
+            sudo chmod 644 /etc/ocserv/defaults/group.conf
+            ok "✅ Created default group config: /etc/ocserv/defaults/group.conf"
+        fi
     fi
 
     if ! command -v psql &> /dev/null || ! psql --version | grep -q "17"; then
