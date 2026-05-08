@@ -8,7 +8,6 @@ import (
 	"github.com/mmtaee/ocserv-dashboard/common/models"
 	"github.com/mmtaee/ocserv-dashboard/common/pkg/logger"
 	"github.com/mmtaee/ocserv-dashboard/telegram_bot/internal/bot/handlers"
-	"github.com/mmtaee/ocserv-dashboard/telegram_bot/internal/i18n"
 )
 
 // Router is responsible for taking a single Telegram update and dispatching it
@@ -52,7 +51,7 @@ func (r *Router) Dispatch(ctx context.Context, upd tgbotapi.Update) {
 
 	if text == "/cancel" || text == "/stop" {
 		r.mgr.Sessions().Reset(chatID)
-		r.hub.SendMainMenu(ctx, chatID, lang)
+		r.hub.SendMainMenu(ctx, chatID, lang, 0)
 		return
 	}
 
@@ -61,7 +60,7 @@ func (r *Router) Dispatch(ctx context.Context, upd tgbotapi.Update) {
 		return
 	}
 	if isCommand(text, "/help") {
-		_ = r.send(chatID, i18n.T(lang, i18n.HelpText))
+		r.hub.ShowHelp(ctx, chatID, lang, 0)
 		return
 	}
 	if isCommand(text, "/skip") {
@@ -69,7 +68,7 @@ func (r *Router) Dispatch(ctx context.Context, upd tgbotapi.Update) {
 		return
 	}
 	if isCommand(text, "/language") {
-		r.hub.HandleLanguageMenu(ctx, chatID, lang)
+		r.hub.ShowLanguageMenu(ctx, chatID, lang, 0)
 		return
 	}
 
@@ -78,8 +77,7 @@ func (r *Router) Dispatch(ctx context.Context, upd tgbotapi.Update) {
 		return
 	}
 
-	_ = r.send(chatID, i18n.T(lang, i18n.UnknownCommand))
-	r.hub.SendMainMenu(ctx, chatID, lang)
+	r.hub.SendMainMenu(ctx, chatID, lang, 0)
 }
 
 func (r *Router) handleCallback(ctx context.Context, cq *tgbotapi.CallbackQuery) {
@@ -87,6 +85,7 @@ func (r *Router) handleCallback(ctx context.Context, cq *tgbotapi.CallbackQuery)
 		return
 	}
 	chatID := cq.Message.Chat.ID
+	srcMsgID := cq.Message.MessageID
 	data := cq.Data
 
 	defer func() {
@@ -99,55 +98,50 @@ func (r *Router) handleCallback(ctx context.Context, cq *tgbotapi.CallbackQuery)
 	switch {
 	case data == cbMainMenu:
 		r.mgr.Sessions().Reset(chatID)
-		r.hub.SendMainMenu(ctx, chatID, lang)
+		r.hub.SendMainMenu(ctx, chatID, lang, srcMsgID)
 
 	case data == cbAddAccount:
-		r.hub.StartAddAccount(ctx, chatID)
+		r.hub.StartAddAccount(ctx, chatID, srcMsgID)
 
 	case data == cbMyAccounts:
-		r.hub.SendMyAccounts(ctx, chatID, lang)
+		r.hub.SendMyAccounts(ctx, chatID, lang, srcMsgID)
 
 	case data == cbNewOrder:
-		r.hub.StartNewOrder(ctx, chatID)
+		r.hub.StartNewOrder(ctx, chatID, srcMsgID)
 
 	case data == cbHelp:
-		_ = r.send(chatID, i18n.T(lang, i18n.HelpText))
+		r.hub.ShowHelp(ctx, chatID, lang, srcMsgID)
 
 	case data == cbLanguage:
-		r.hub.HandleLanguageMenu(ctx, chatID, lang)
+		r.hub.ShowLanguageMenu(ctx, chatID, lang, srcMsgID)
 
 	case data == cbLangEN:
-		r.hub.SetLanguage(ctx, chatID, models.TelegramLanguageEN)
-		r.hub.SendMainMenu(ctx, chatID, models.TelegramLanguageEN)
+		r.hub.SetLanguage(ctx, chatID, models.TelegramLanguageEN, srcMsgID)
 
 	case data == cbLangFA:
-		r.hub.SetLanguage(ctx, chatID, models.TelegramLanguageFA)
-		r.hub.SendMainMenu(ctx, chatID, models.TelegramLanguageFA)
+		r.hub.SetLanguage(ctx, chatID, models.TelegramLanguageFA, srcMsgID)
+
+	case strings.HasPrefix(data, cbAccountDetail):
+		r.hub.ShowAccountDetail(ctx, chatID, parseUintSuffix(data, cbAccountDetail), srcMsgID)
 
 	case strings.HasPrefix(data, cbAccountUsage):
-		r.hub.SendAccountUsage(ctx, chatID, parseUintSuffix(data, cbAccountUsage), lang)
+		r.hub.SendAccountUsage(ctx, chatID, parseUintSuffix(data, cbAccountUsage), lang, srcMsgID)
 
 	case strings.HasPrefix(data, cbAccountRenew):
-		r.hub.StartRenewForAccount(ctx, chatID, parseUintSuffix(data, cbAccountRenew))
+		r.hub.StartRenewForAccount(ctx, chatID, parseUintSuffix(data, cbAccountRenew), srcMsgID)
 
 	case strings.HasPrefix(data, cbAccountRemove):
-		r.hub.RemoveAccount(ctx, chatID, parseUintSuffix(data, cbAccountRemove))
+		r.hub.RemoveAccount(ctx, chatID, parseUintSuffix(data, cbAccountRemove), srcMsgID)
 
 	case strings.HasPrefix(data, cbPickPackageNew):
-		r.hub.PickedPackageNew(ctx, chatID, parseUintSuffix(data, cbPickPackageNew))
+		r.hub.PickedPackageNew(ctx, chatID, parseUintSuffix(data, cbPickPackageNew), srcMsgID)
 
 	case strings.HasPrefix(data, cbPickPackageRenew):
-		r.hub.PickedPackageRenew(ctx, chatID, parseUintSuffix(data, cbPickPackageRenew))
+		r.hub.PickedPackageRenew(ctx, chatID, parseUintSuffix(data, cbPickPackageRenew), srcMsgID)
 
 	default:
 		logger.Warn("telegram_bot: unknown callback data: %s", data)
 	}
-}
-
-func (r *Router) send(chatID int64, text string) error {
-	msg := tgbotapi.NewMessage(chatID, text)
-	_, err := r.api.Send(msg)
-	return err
 }
 
 func isCommand(text, cmd string) bool {

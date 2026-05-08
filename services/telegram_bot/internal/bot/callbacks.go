@@ -10,6 +10,7 @@ const (
 	cbLangEN       = "lang:en"
 	cbLangFA       = "lang:fa"
 
+	cbAccountDetail = "acc:detail:"
 	cbAccountUsage  = "acc:usage:"
 	cbAccountRenew  = "acc:renew:"
 	cbAccountRemove = "acc:remove:"
