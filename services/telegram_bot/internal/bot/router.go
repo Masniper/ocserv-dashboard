@@ -20,12 +20,17 @@ type Router struct {
 }
 
 func NewRouter(mgr *Manager, api *tgbotapi.BotAPI) *Router {
+	brand := api.Self.FirstName
+	if brand == "" {
+		brand = api.Self.UserName
+	}
 	hub := handlers.NewHub(handlers.Deps{
 		API:        api,
 		Repo:       mgr.Repo(),
 		Sessions:   mgr.Sessions(),
 		Verifier:   mgr.Verifier(),
 		ReceiptDir: mgr.ReceiptsDir(),
+		BrandName:  brand,
 	})
 	return &Router{mgr: mgr, api: api, hub: hub}
 }
@@ -102,7 +107,31 @@ func (r *Router) handleCallback(ctx context.Context, cq *tgbotapi.CallbackQuery)
 	switch {
 	case data == cbMainMenu:
 		r.mgr.Sessions().Reset(chatID)
-		r.hub.SendMainMenu(ctx, chatID, lang, srcMsgID)
+		// "User view" for admins: cbMainMenu always renders the user menu.
+		r.hub.SendUserMenu(ctx, chatID, lang, srcMsgID)
+
+	case data == cbAdminMenu:
+		r.mgr.Sessions().Reset(chatID)
+		if !r.hub.IsAdmin(ctx, chatID) {
+			r.hub.SendUserMenu(ctx, chatID, lang, srcMsgID)
+		} else {
+			r.hub.SendAdminMenu(ctx, chatID, lang, srcMsgID)
+		}
+
+	case data == cbAdminPending:
+		if r.hub.IsAdmin(ctx, chatID) {
+			r.hub.ShowAdminPending(ctx, chatID, lang, srcMsgID)
+		}
+
+	case data == cbAdminReceipts:
+		if r.hub.IsAdmin(ctx, chatID) {
+			r.hub.ShowAdminReceipts(ctx, chatID, lang, srcMsgID)
+		}
+
+	case data == cbAdminStats:
+		if r.hub.IsAdmin(ctx, chatID) {
+			r.hub.ShowAdminStats(ctx, chatID, lang, srcMsgID)
+		}
 
 	case data == cbAddAccount:
 		r.hub.StartAddAccount(ctx, chatID, srcMsgID)

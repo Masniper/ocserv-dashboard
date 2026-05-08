@@ -49,6 +49,18 @@ const (
 	SessionTimedOut   Key = "session_timed_out"
 	OcservDeactivated Key = "ocserv_deactivated"
 	RateLimited       Key = "rate_limited"
+
+	// Admin-only catalog
+	AdminMenu        Key = "admin_menu"
+	BtnAdminPending  Key = "btn_admin_pending"
+	BtnAdminReceipts Key = "btn_admin_receipts"
+	BtnAdminStats    Key = "btn_admin_stats"
+	BtnAdminUserView Key = "btn_admin_user_view"
+	BtnOpenPanel     Key = "btn_open_panel"
+	AdminNoPending   Key = "admin_no_pending"
+	AdminNoReceipts  Key = "admin_no_receipts"
+	AdminStatsText   Key = "admin_stats_text"
+	AdminRequestRow  Key = "admin_request_row"
 )
 
 var catalog = map[string]map[Key]string{

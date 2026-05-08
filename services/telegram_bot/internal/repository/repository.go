@@ -205,3 +205,55 @@ func (r *Repository) RequestByID(ctx context.Context, id uint) (*models.Telegram
 	}
 	return &req, nil
 }
+
+// RequestsByStatuses returns recent requests in the given status set, newest
+// first. Capped by limit so the admin menu never sends a Telegram message
+// that exceeds the 4096-character body limit.
+func (r *Repository) RequestsByStatuses(ctx context.Context, statuses []string, limit int) ([]models.TelegramRequest, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	var requests []models.TelegramRequest
+	err := r.db.WithContext(ctx).
+		Where("status IN ?", statuses).
+		Order("created_at DESC").
+		Limit(limit).
+		Find(&requests).Error
+	return requests, err
+}
+
+// AdminStats aggregates counts surfaced in the admin /start menu.
+type AdminStats struct {
+	LinkedAccounts   int64
+	ActivePackages   int64
+	PendingRequests  int64
+	AwaitingPayments int64
+	UploadedReceipts int64
+}
+
+func (r *Repository) AdminStats(ctx context.Context) (AdminStats, error) {
+	var s AdminStats
+	db := r.db.WithContext(ctx)
+	if err := db.Model(&models.TelegramAccount{}).Count(&s.LinkedAccounts).Error; err != nil {
+		return s, err
+	}
+	if err := db.Model(&models.TelegramPackage{}).Where("is_active = ?", true).Count(&s.ActivePackages).Error; err != nil {
+		return s, err
+	}
+	if err := db.Model(&models.TelegramRequest{}).
+		Where("status = ?", models.TelegramRequestStatusPending).
+		Count(&s.PendingRequests).Error; err != nil {
+		return s, err
+	}
+	if err := db.Model(&models.TelegramRequest{}).
+		Where("status = ?", models.TelegramRequestStatusAwaitingPayment).
+		Count(&s.AwaitingPayments).Error; err != nil {
+		return s, err
+	}
+	if err := db.Model(&models.TelegramRequest{}).
+		Where("status = ?", models.TelegramRequestStatusPaymentUploaded).
+		Count(&s.UploadedReceipts).Error; err != nil {
+		return s, err
+	}
+	return s, nil
+}

@@ -2,7 +2,7 @@ package i18n
 
 // HTML strings — see en.go for tag and escaping rules.
 var fa = map[Key]string{
-	Welcome: "👋 <b>به ربات داشبورد Ocserv خوش آمدید.</b>\n\n" +
+	Welcome: "👋 <b>به ربات %s خوش آمدید.</b>\n\n" +
 		"از این ربات می‌توانید:\n" +
 		"• 🔗 یک اکانت VPN موجود را به چت تلگرام لینک کنید\n" +
 		"• 📊 مصرف و تاریخ انقضا را ببینید\n" +
@@ -63,4 +63,22 @@ var fa = map[Key]string{
 	SessionTimedOut:   "⌛ جلسه منقضی شد. لطفاً از منوی اصلی دوباره تلاش کنید.",
 	OcservDeactivated: "⛔ این اکانت غیرفعال است.",
 	RateLimited:       "🚦 تعداد تلاش‌ها زیاد است. لطفاً یک دقیقه صبر کنید.",
+
+	AdminMenu:        "🛡 <b>منوی ادمین</b>\nیک گزینه را انتخاب کنید:",
+	BtnAdminPending:  "📥 در انتظار",
+	BtnAdminReceipts: "🧾 رسیدها",
+	BtnAdminStats:    "📊 آمار",
+	BtnAdminUserView: "👤 نمای کاربر",
+	BtnOpenPanel:     "🌐 پنل",
+	AdminNoPending:   "📭 درخواست در انتظاری وجود ندارد.",
+	AdminNoReceipts:  "📭 رسیدی برای تایید وجود ندارد.",
+	AdminStatsText: "📊 <b>آمار ربات</b>\n\n" +
+		"• اکانت‌های لینک‌شده: <b>%d</b>\n" +
+		"• پکیج‌های فعال: <b>%d</b>\n" +
+		"• درخواست‌های در انتظار: <b>%d</b>\n" +
+		"• در انتظار پرداخت: <b>%d</b>\n" +
+		"• رسیدهای آپلودشده: <b>%d</b>",
+	AdminRequestRow: "<b>#%d</b> · %s · <code>%s</code>\n" +
+		"📝 %s\n" +
+		"🕒 %s",
 }

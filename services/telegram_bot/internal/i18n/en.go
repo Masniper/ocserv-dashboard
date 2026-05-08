@@ -5,7 +5,7 @@ package i18n
 // User-supplied values interpolated via T(...) MUST be HTML-escaped by the
 // caller (see handlers.htmlEscape) — this catalog is plain HTML otherwise.
 var en = map[Key]string{
-	Welcome: "👋 <b>Welcome to the Ocserv Dashboard bot.</b>\n\n" +
+	Welcome: "👋 <b>Welcome to %s.</b>\n\n" +
 		"Here you can:\n" +
 		"• 🔗 Link an existing VPN account\n" +
 		"• 📊 Check usage and expiry\n" +
@@ -66,4 +66,23 @@ var en = map[Key]string{
 	SessionTimedOut:   "⌛ Session timed out. Please try again from the main menu.",
 	OcservDeactivated: "⛔ This account is deactivated.",
 	RateLimited:       "🚦 Too many attempts. Please wait a minute and try again.",
+
+	AdminMenu:        "🛡 <b>Admin menu</b>\nPick an action:",
+	BtnAdminPending:  "📥 Pending",
+	BtnAdminReceipts: "🧾 Receipts",
+	BtnAdminStats:    "📊 Stats",
+	BtnAdminUserView: "👤 User view",
+	BtnOpenPanel:     "🌐 Open panel",
+	AdminNoPending:   "📭 No pending requests.",
+	AdminNoReceipts:  "📭 No receipts to confirm.",
+	AdminStatsText: "📊 <b>Bot stats</b>\n\n" +
+		"• Linked accounts: <b>%d</b>\n" +
+		"• Active packages: <b>%d</b>\n" +
+		"• Pending requests: <b>%d</b>\n" +
+		"• Awaiting payment: <b>%d</b>\n" +
+		"• Uploaded receipts: <b>%d</b>",
+	// %d=id, %s=type, %s=desired/target label, %s=note(or "—"), %s=created_at
+	AdminRequestRow: "<b>#%d</b> · %s · <code>%s</code>\n" +
+		"📝 %s\n" +
+		"🕒 %s",
 }

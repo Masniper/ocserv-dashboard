@@ -17,4 +17,11 @@ const (
 
 	cbPickPackageNew   = "pkgn:"
 	cbPickPackageRenew = "pkgr:"
+
+	// Admin-only callbacks
+	cbAdminMenu     = "adm:menu"
+	cbAdminPending  = "adm:pending"
+	cbAdminReceipts = "adm:receipts"
+	cbAdminStats    = "adm:stats"
+	cbAdminUserView = "adm:user"
 )

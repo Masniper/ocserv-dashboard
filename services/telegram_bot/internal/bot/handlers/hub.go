@@ -46,6 +46,14 @@ const (
 	cbAccountRemove    = "acc:remove:"
 	cbPickPackageNew   = "pkgn:"
 	cbPickPackageRenew = "pkgr:"
+
+	// Admin-only callbacks. Must mirror the values in the bot package's
+	// callbacks.go since the router (in the bot package) dispatches by raw
+	// string match.
+	cbAdminMenu     = "adm:menu"
+	cbAdminPending  = "adm:pending"
+	cbAdminReceipts = "adm:receipts"
+	cbAdminStats    = "adm:stats"
 )
 
 type Deps struct {
@@ -54,6 +62,10 @@ type Deps struct {
 	Sessions   *session.Store
 	Verifier   *auth.Verifier
 	ReceiptDir string
+	// BrandName is what is shown in the welcome banner — typically the
+	// bot's display name from BotFather (api.Self.FirstName) but callers
+	// may pass a different label here.
+	BrandName string
 }
 
 type Hub struct {
@@ -61,12 +73,24 @@ type Hub struct {
 }
 
 func NewHub(d Deps) *Hub {
+	if d.BrandName == "" {
+		d.BrandName = "Ocserv Dashboard"
+	}
 	return &Hub{deps: d}
 }
 
 // =============================================================================
 // Helpers
 // =============================================================================
+
+// IsAdmin reports whether the chat ID is the configured admin chat.
+func (h *Hub) IsAdmin(ctx context.Context, chatID int64) bool {
+	settings, err := h.deps.Repo.Settings(ctx)
+	if err != nil || settings.AdminChatID == 0 {
+		return false
+	}
+	return settings.AdminChatID == chatID
+}
 
 // LanguageFor returns the preferred language for the given chat. Falls back
 // to the default language from settings when no account is linked yet.
@@ -150,6 +174,28 @@ func (h *Hub) respond(chatID int64, srcMsgID int, text string, markup *tgbotapi.
 	h.send(chatID, text)
 }
 
+func adminMenuKeyboard(lang, panelURL string) tgbotapi.InlineKeyboardMarkup {
+	rows := [][]tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminPending), cbAdminPending),
+			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminReceipts), cbAdminReceipts),
+		),
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminStats), cbAdminStats),
+			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminUserView), cbMainMenu),
+		),
+	}
+	if panelURL != "" {
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonURL(i18n.T(lang, i18n.BtnOpenPanel), panelURL),
+		))
+	}
+	rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnLanguage), cbLanguage),
+	))
+	return tgbotapi.NewInlineKeyboardMarkup(rows...)
+}
+
 func mainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
@@ -231,16 +277,158 @@ func (h *Hub) HandleStart(ctx context.Context, m *tgbotapi.Message) {
 		return
 	}
 	lang := h.LanguageFor(ctx, chatID)
-	text := i18n.T(lang, i18n.Welcome) + "\n\n" + i18n.T(lang, i18n.MainMenu)
+	welcome := i18n.T(lang, i18n.Welcome, htmlEscape(h.deps.BrandName))
+
+	if settings.AdminChatID != 0 && settings.AdminChatID == chatID {
+		text := welcome + "\n\n" + i18n.T(lang, i18n.AdminMenu)
+		kb := adminMenuKeyboard(lang, panelURL(settings))
+		h.sendKB(chatID, text, kb)
+		return
+	}
+
+	text := welcome + "\n\n" + i18n.T(lang, i18n.MainMenu)
 	kb := mainMenuKeyboard(lang)
 	h.sendKB(chatID, text, kb)
 }
 
-// SendMainMenu renders the main menu either by editing the source message
-// (when srcMsgID > 0) or by sending a new one.
+// SendMainMenu renders the user main menu. Admins get the admin menu
+// instead so /start always lands on the most useful screen for them.
 func (h *Hub) SendMainMenu(ctx context.Context, chatID int64, lang string, srcMsgID int) {
+	if h.IsAdmin(ctx, chatID) {
+		h.SendAdminMenu(ctx, chatID, lang, srcMsgID)
+		return
+	}
 	kb := mainMenuKeyboard(lang)
 	h.respond(chatID, srcMsgID, i18n.T(lang, i18n.MainMenu), &kb)
+}
+
+// SendUserMenu always renders the user menu, even for the admin chat.
+// Used by the "user view" admin shortcut.
+func (h *Hub) SendUserMenu(ctx context.Context, chatID int64, lang string, srcMsgID int) {
+	kb := mainMenuKeyboard(lang)
+	h.respond(chatID, srcMsgID, i18n.T(lang, i18n.MainMenu), &kb)
+}
+
+// SendAdminMenu shows the admin actions panel.
+func (h *Hub) SendAdminMenu(ctx context.Context, chatID int64, lang string, srcMsgID int) {
+	settings, _ := h.deps.Repo.Settings(ctx)
+	kb := adminMenuKeyboard(lang, panelURL(settings))
+	h.respond(chatID, srcMsgID, i18n.T(lang, i18n.AdminMenu), &kb)
+}
+
+// =============================================================================
+// Admin views
+// =============================================================================
+
+func (h *Hub) ShowAdminPending(ctx context.Context, chatID int64, lang string, srcMsgID int) {
+	h.sendTyping(chatID)
+	requests, err := h.deps.Repo.RequestsByStatuses(ctx, []string{models.TelegramRequestStatusPending}, 10)
+	settings, _ := h.deps.Repo.Settings(ctx)
+	if err != nil || len(requests) == 0 {
+		h.respond(chatID, srcMsgID, i18n.T(lang, i18n.AdminNoPending), backToAdminKeyboard(lang, panelURL(settings)))
+		return
+	}
+	body := renderRequestList(lang, requests)
+	h.respond(chatID, srcMsgID, body, backToAdminKeyboard(lang, panelURL(settings)))
+}
+
+func (h *Hub) ShowAdminReceipts(ctx context.Context, chatID int64, lang string, srcMsgID int) {
+	h.sendTyping(chatID)
+	requests, err := h.deps.Repo.RequestsByStatuses(ctx, []string{
+		models.TelegramRequestStatusAwaitingPayment,
+		models.TelegramRequestStatusPaymentUploaded,
+	}, 10)
+	settings, _ := h.deps.Repo.Settings(ctx)
+	if err != nil || len(requests) == 0 {
+		h.respond(chatID, srcMsgID, i18n.T(lang, i18n.AdminNoReceipts), backToAdminKeyboard(lang, panelURL(settings)))
+		return
+	}
+	body := renderRequestList(lang, requests)
+	h.respond(chatID, srcMsgID, body, backToAdminKeyboard(lang, panelURL(settings)))
+}
+
+func (h *Hub) ShowAdminStats(ctx context.Context, chatID int64, lang string, srcMsgID int) {
+	h.sendTyping(chatID)
+	stats, err := h.deps.Repo.AdminStats(ctx)
+	settings, _ := h.deps.Repo.Settings(ctx)
+	if err != nil {
+		logger.Warn("telegram_bot: AdminStats failed: %v", err)
+		h.respond(chatID, srcMsgID, i18n.T(lang, i18n.UnknownCommand), backToAdminKeyboard(lang, panelURL(settings)))
+		return
+	}
+	text := i18n.T(lang, i18n.AdminStatsText,
+		stats.LinkedAccounts,
+		stats.ActivePackages,
+		stats.PendingRequests,
+		stats.AwaitingPayments,
+		stats.UploadedReceipts,
+	)
+	h.respond(chatID, srcMsgID, text, backToAdminKeyboard(lang, panelURL(settings)))
+}
+
+func backToAdminKeyboard(lang, panel string) *tgbotapi.InlineKeyboardMarkup {
+	rows := [][]tgbotapi.InlineKeyboardButton{
+		tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnBack), cbAdminMenu),
+		),
+	}
+	if panel != "" {
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonURL(i18n.T(lang, i18n.BtnOpenPanel), panel),
+		))
+	}
+	kb := tgbotapi.NewInlineKeyboardMarkup(rows...)
+	return &kb
+}
+
+func renderRequestList(lang string, requests []models.TelegramRequest) string {
+	var b strings.Builder
+	for i, r := range requests {
+		if i > 0 {
+			b.WriteString("\n\n")
+		}
+		label := r.DesiredUsername
+		if label == "" && r.TargetOcservID != nil {
+			label = "user_id=" + strconv.FormatUint(uint64(*r.TargetOcservID), 10)
+		}
+		if label == "" {
+			label = "—"
+		}
+		note := r.UserMessage
+		if note == "" {
+			note = "—"
+		}
+		b.WriteString(i18n.T(lang, i18n.AdminRequestRow,
+			r.ID,
+			r.Type,
+			htmlEscape(label),
+			htmlEscape(note),
+			r.CreatedAt.Format("2006-01-02 15:04"),
+		))
+	}
+	return b.String()
+}
+
+// panelURL builds the admin web panel deep link from TelegramSettings.OcservHost.
+// Telegram inline URL buttons require https; missing scheme is normalized.
+func panelURL(s *models.TelegramSettings) string {
+	if s == nil {
+		return ""
+	}
+	host := strings.TrimSpace(s.OcservHost)
+	if host == "" {
+		return ""
+	}
+	host = strings.TrimRight(host, "/")
+	switch {
+	case strings.HasPrefix(host, "https://"):
+		// keep
+	case strings.HasPrefix(host, "http://"):
+		host = "https://" + strings.TrimPrefix(host, "http://")
+	default:
+		host = "https://" + host
+	}
+	return host + "/telegram/requests"
 }
 
 func (h *Hub) ShowLanguageMenu(ctx context.Context, chatID int64, lang string, srcMsgID int) {
