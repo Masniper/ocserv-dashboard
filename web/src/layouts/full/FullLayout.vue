@@ -15,12 +15,8 @@ const release = computed(() => serverStore.getDashboardRelease);
     <v-locale-provider>
         <v-app>
             <MainView />
-            <v-main>
-                <v-col class="text-center bg-warning ma-0 pa-0" v-if="release.Current != release.Latest">
-                    <span class="text-capitalize">{{ t('NEW_RELEASE_IS_AVAILABLE') }}</span>
-                    ({{ release.Latest }})
-                </v-col>
-                <v-container class="page-wrapper" fluid style="background-color: #eeee">
+            <v-main class="page-bg">
+                <v-container class="page-wrapper" fluid>
                     <div class="maxWidth">
                         <RouterView />
                     </div>
@@ -29,3 +25,10 @@ const release = computed(() => serverStore.getDashboardRelease);
         </v-app>
     </v-locale-provider>
 </template>
+
+<style lang="scss" scoped>
+.page-bg {
+    background-color: rgb(var(--v-theme-background));
+    min-height: 100vh;
+}
+</style>

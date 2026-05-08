@@ -12,6 +12,14 @@ dist
 dist-ssr
 *.local
 
+# Yarn Berry caches and unplugged packages (keep configs only)
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -22,7 +30,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
+*.yarn
 *.db
 *.sqlite
 

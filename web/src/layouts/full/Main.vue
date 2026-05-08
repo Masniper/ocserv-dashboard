@@ -6,22 +6,23 @@ import NavItem from './vertical-sidebar/NavItem/index.vue';
 import ExtraBox from './vertical-sidebar/extrabox/ExtraBox.vue';
 import ProfileDD from './vertical-header/ProfileDD.vue';
 import NavCollapse from './vertical-sidebar/NavCollapse/NavCollapse.vue';
+import LanguageDD from '@/layouts/full/vertical-header/LanguageDD.vue';
+import ThemeDD from '@/layouts/full/vertical-header/ThemeDD.vue';
 import logoUrl from '@/assets/images/logo-circule.png';
 import { getSidebarItems } from '@/layouts/full/vertical-sidebar/sidebarItem';
-import LanguageDD from '@/layouts/full/vertical-header/LanguageDD.vue';
 import { useServerStore } from '@/stores/config';
-import { useI18n } from 'vue-i18n';
-
-const { t } = useI18n();
+import { useThemeStore } from '@/stores/theme';
 
 const sidebarMenu = getSidebarItems();
+const { mdAndDown, smAndDown } = useDisplay();
+const serverStore = useServerStore();
+const themeStore = useThemeStore();
 
-const { mdAndDown } = useDisplay();
+themeStore.sync();
+
 const sDrawer = ref(true);
 
-const serverStore = useServerStore();
-const serverInfo = serverStore.getOcservVersion.split(', ');
-const release = computed(() => serverStore.getDashboardRelease);
+const serverInfo = computed(() => serverStore.getOcservVersion.split(', ').filter(Boolean));
 
 onMounted(() => {
     sDrawer.value = !mdAndDown.value;
@@ -33,65 +34,98 @@ watch(mdAndDown, (val) => {
 </script>
 
 <template>
-    <v-navigation-drawer v-model="sDrawer" :width="300" app class="leftSidebar" elevation="0" left>
-        <div class="py-3 bg-primary text-h5">
-            <span class="mx-5"
-                >Ocserv Dashboard <span style="font-size: 14px; color: #453737">({{ release.Current }})</span></span
+    <v-navigation-drawer
+        v-model="sDrawer"
+        :width="280"
+        app
+        class="leftSidebar"
+        color="surface"
+        elevation="0"
+        left
+    >
+        <div class="sidebar-brand d-flex align-center px-5 py-4">
+            <v-img :src="logoUrl" alt="logo" class="me-3" max-width="36" />
+            <span class="text-subtitle-1 font-weight-bold text-primary">Ocserv Dashboard</span>
+            <v-spacer />
+            <v-btn
+                v-if="mdAndDown"
+                aria-label="close menu"
+                icon
+                size="small"
+                variant="text"
+                @click="sDrawer = false"
             >
-            <v-btn icon size="small" variant="text" @click="sDrawer = !sDrawer">
-                <v-icon size="25" end>mdi-chevron-left</v-icon>
+                <v-icon size="22">mdi-close</v-icon>
             </v-btn>
         </div>
+        <v-divider />
         <perfect-scrollbar class="scrollnavbar">
-            <v-list class="pa-6 bg-grayE">
-                <template v-for="(item, i) in sidebarMenu">
-                    <NavGroup v-if="item.header" :key="item.title" :item="item" />
+            <v-list class="pa-4" density="comfortable" nav>
+                <template v-for="(item, i) in sidebarMenu" :key="`nav-${i}`">
+                    <NavGroup v-if="item.header" :item="item" />
                     <NavCollapse v-else-if="item.children" :item="item" :level="0" class="leftPadding" />
                     <NavItem v-else :item="item" class="leftPadding" />
                 </template>
             </v-list>
-            <div class="pa-4">
+            <div class="px-4 pb-4">
                 <ExtraBox />
             </div>
         </perfect-scrollbar>
     </v-navigation-drawer>
-    <v-app-bar class="top-header bg-primary" elevation="0" height="64">
-        <div v-if="!sDrawer">
-            <v-img :src="logoUrl" class="hidden-md-and-up" width="50px" />
-            <v-row align="center" class="hidden-md-and-down ms-3" justify="center">
-                <v-col class="ma-0 pa-0" cols="12" md="6">
-                    <v-img :src="logoUrl" width="50px" />
-                </v-col>
-                <v-divider class="me-1 ms-2" vertical />
-                <v-col class="ma-0 pa-0" cols="12" md="3">
-                    <v-btn class="mx-1" icon size="small" variant="text" @click="sDrawer = !sDrawer">
-                        <v-icon size="25">mdi-menu</v-icon>
-                    </v-btn>
-                </v-col>
-            </v-row>
+
+    <v-app-bar
+        class="top-header"
+        color="surface"
+        elevation="1"
+        flat
+        height="64"
+    >
+        <v-btn
+            aria-label="toggle menu"
+            class="ms-2"
+            icon
+            size="small"
+            variant="text"
+            @click="sDrawer = !sDrawer"
+        >
+            <v-icon size="24">mdi-menu</v-icon>
+        </v-btn>
+
+        <div class="d-flex align-center ms-2">
+            <v-img :src="logoUrl" alt="logo" max-width="32" />
+            <span class="ms-2 text-subtitle-1 font-weight-bold text-primary d-none d-sm-inline">
+                Ocserv Dashboard
+            </span>
         </div>
 
-        <div v-else class="hidden-md-and-down" style="margin-left: 310px !important; margin-right: 310px !important">
-            <v-img :src="logoUrl" width="50px" />
+        <v-spacer />
+
+        <div v-if="!smAndDown && serverInfo.length" class="server-info text-caption text-medium-emphasis me-3">
+            <span v-for="(line, idx) in serverInfo" :key="idx" class="d-block">
+                {{ line }}
+            </span>
         </div>
 
-        <div class="d-flex align-center justify-space-between w-100">
-            <div style="margin: auto">
-                {{ serverInfo[0] }}
-                <br />
-                {{ serverInfo[1] }}
-            </div>
-
-            <div>
-                <v-btn class="hidden-lg-and-up" icon size="small" variant="text" @click="sDrawer = !sDrawer">
-                    <v-icon size="20">mdi-menu</v-icon>
-                </v-btn>
-            </div>
-
-            <div>
-                <LanguageDD />
-                <ProfileDD />
-            </div>
-        </div>
+        <ThemeDD />
+        <LanguageDD />
+        <ProfileDD />
     </v-app-bar>
 </template>
+
+<style lang="scss" scoped>
+.top-header {
+    border-bottom: 1px solid rgb(var(--v-theme-borderColor));
+}
+
+.sidebar-brand {
+    min-height: 64px;
+}
+
+.server-info {
+    line-height: 1.2;
+    text-align: end;
+    max-width: 260px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>

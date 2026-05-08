@@ -1,35 +1,42 @@
 import type { ThemeTypes } from '@/types/themeTypes/ThemeType';
 
-const BlueTheme: ThemeTypes = {
-    name: 'BlueTheme',
+const OceanLight: ThemeTypes = {
+    name: 'OceanLight',
     dark: false,
     variables: {
-        'border-color': '#eeeeee',
+        'border-color': '#E2E8F0',
         'carousel-control-size': 10
     },
     colors: {
-        primary: '#5D87FF',
-        secondary: '#49BEFF',
-        info: '#539BFF',
-        success: '#13DEB9',
-        accent: '#FFAB91',
-        warning: '#FFAE1F',
-        error: '#FA896B',
-        muted: '#5a6a85',
-        lightprimary: '#ECF2FF',
-        lightsecondary: '#E8F7FF',
-        lightsuccess: '#E6FFFA',
-        lighterror: '#FDEDE8',
-        lightwarning: '#FEF5E5',
-        textPrimary: '#2A3547',
-        textSecondary: '#2A3547',
-        borderColor: '#e5eaef',
-        inputBorder: '#000',
-        containerBg: '#ffffff',
-        hoverColor: '#f6f9fc',
-        surface: '#fff',
-        'on-surface-variant': '#fff',
-        grey100: '#F2F6FA'
+        primary: '#0EA5A4',
+        secondary: '#0891B2',
+        info: '#0284C7',
+        success: '#10B981',
+        accent: '#F59E0B',
+        warning: '#F59E0B',
+        error: '#EF4444',
+        muted: '#64748B',
+        lightprimary: '#CCFBF1',
+        lightsecondary: '#CFFAFE',
+        lightsuccess: '#D1FAE5',
+        lighterror: '#FEE2E2',
+        lightwarning: '#FEF3C7',
+        lightinfo: '#E0F2FE',
+        textPrimary: '#0F172A',
+        textSecondary: '#475569',
+        borderColor: '#E2E8F0',
+        inputBorder: '#94A3B8',
+        containerBg: '#FFFFFF',
+        hoverColor: '#F1F5F9',
+        background: '#F8FAFC',
+        surface: '#FFFFFF',
+        'on-surface': '#0F172A',
+        'on-surface-variant': '#475569',
+        grey100: '#F1F5F9'
     }
 };
-export { BlueTheme };
+
+export { OceanLight };
+
+// Backwards compatibility for any legacy import paths.
+export const BlueTheme = OceanLight;

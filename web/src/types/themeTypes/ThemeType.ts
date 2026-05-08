@@ -22,7 +22,9 @@ export type ThemeTypes = {
         hoverColor?: string;
         inputBorder?: string;
         containerBg?: string;
+        background?: string;
         surface?: string;
+        'on-surface'?: string;
         'on-surface-variant'?: string;
         grey100?: string;
         muted?: string;
