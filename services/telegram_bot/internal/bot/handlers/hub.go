@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"html"
 	"io"
@@ -608,12 +607,7 @@ func (h *Hub) completeLink(ctx context.Context, chatID int64, username, password
 	user, err := h.deps.Verifier.Verify(ctx, username, password)
 	if err != nil {
 		h.deps.Sessions.Reset(chatID)
-		switch {
-		case errors.Is(err, auth.ErrUserInactive):
-			h.send(chatID, i18n.T(lang, i18n.OcservDeactivated))
-		default:
-			h.send(chatID, i18n.T(lang, i18n.AuthFail))
-		}
+		h.send(chatID, i18n.T(lang, i18n.AuthFail))
 		h.SendMainMenu(ctx, chatID, lang, 0)
 		return
 	}
@@ -635,9 +629,11 @@ func (h *Hub) completeLink(ctx context.Context, chatID int64, username, password
 	}
 	h.deps.Sessions.Reset(chatID)
 	h.send(chatID, i18n.T(lang, i18n.AuthSuccess))
-	if user.IsLocked {
-		// Surface a one-line hint so the user immediately knows the linked
-		// account is locked and how to renew it.
+	// Surface a one-line hint so the user immediately knows the linked
+	// account needs renewal (locked = quota/expiry exhausted, deactivated =
+	// disabled by admin or auto-disabled). Both states can be recovered by
+	// renewing through the bot.
+	if user.IsLocked || user.DeactivatedAt != nil {
 		h.send(chatID, i18n.T(lang, i18n.LinkedLockedHint))
 	}
 	h.SendMainMenu(ctx, chatID, lang, 0)
