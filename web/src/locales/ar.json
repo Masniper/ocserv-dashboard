@@ -360,5 +360,11 @@
   "TELEGRAM_CARD_NUMBER": "Payment Card Number",
   "TELEGRAM_CARD_NUMBER_HINT": "card number shown to users before they upload a payment receipt",
   "TELEGRAM_CARD_HOLDER": "Card Holder Name",
-  "TELEGRAM_CARD_HOLDER_HINT": "name of the card holder shown alongside the card number"
+  "TELEGRAM_CARD_HOLDER_HINT": "name of the card holder shown alongside the card number",
+  "TELEGRAM_APPROVE_CARD_NUMBER": "Payment card (sent to user)",
+  "TELEGRAM_APPROVE_CARD_HINT": "optional override; defaults to card saved in Telegram settings if left empty on approve",
+  "TELEGRAM_APPROVE_CARD_HOLDER": "Card holder (sent to user)",
+  "TELEGRAM_APPROVE_CARD_HOLDER_HINT": "optional override; defaults to Telegram settings",
+  "TELEGRAM_REPLY_TO_USER": "Reply to customer (Telegram)",
+  "TELEGRAM_REPLY_TO_USER_HINT": "shown to the user in Telegram together with payment instructions"
 }

@@ -302,7 +302,11 @@ func (ctl *Controller) Approve(c echo.Context) error {
 		return ctl.request.BadRequest(c, err)
 	}
 
-	go ctl.notifyAwaitingPayment(updated)
+	go ctl.notifyAwaitingPayment(updated, &awaitingPaymentOpts{
+		CardNumber:  data.CardNumber,
+		CardHolder:  data.CardHolder,
+		ReplyToUser: data.ReplyToUser,
+	})
 	return c.JSON(http.StatusOK, updated)
 }
 
@@ -558,13 +562,31 @@ func (ctl *Controller) findOcservUserByID(ctx context.Context, id uint) (*models
 // Notifications (best-effort fire-and-forget)
 // =============================================================================
 
-func (ctl *Controller) notifyAwaitingPayment(req *models.TelegramRequest) {
+// awaitingPaymentOpts carries optional payment instructions chosen when approving a request.
+type awaitingPaymentOpts struct {
+	CardNumber  string
+	CardHolder  string
+	ReplyToUser string
+}
+
+func (ctl *Controller) notifyAwaitingPayment(req *models.TelegramRequest, opts *awaitingPaymentOpts) {
 	settings, err := ctl.repo.Settings(context.Background())
 	if err != nil || settings.BotToken == "" || !settings.Enabled {
 		return
 	}
-	msg := formatAwaitingPaymentMessage(settings)
+	lang := ctl.resolveNotifyLang(context.Background(), req.ChatID, settings)
+	msg := formatAwaitingPaymentMessage(lang, settings, opts)
 	_ = sendTelegramHTMLMessage(settings.BotToken, req.ChatID, msg)
+}
+
+func (ctl *Controller) resolveNotifyLang(ctx context.Context, chatID int64, settings *models.TelegramSettings) string {
+	if l, err := ctl.repo.PreferredLanguageForChat(ctx, chatID); err == nil && strings.TrimSpace(l) != "" {
+		return strings.TrimSpace(l)
+	}
+	if settings != nil && settings.DefaultLanguage != "" {
+		return settings.DefaultLanguage
+	}
+	return models.TelegramLanguageEN
 }
 
 func (ctl *Controller) notifyRejected(req *models.TelegramRequest) {
@@ -583,29 +605,71 @@ func (ctl *Controller) notifyDelivery(chatID int64, settings *models.TelegramSet
 	_ = sendTelegramHTMLMessage(settings.BotToken, chatID, message)
 }
 
-func formatAwaitingPaymentMessage(settings *models.TelegramSettings) string {
+func formatAwaitingPaymentMessage(lang string, settings *models.TelegramSettings, opts *awaitingPaymentOpts) string {
+	cardNum := ""
+	cardHold := ""
+	if settings != nil {
+		cardNum = settings.CardNumber
+		cardHold = settings.CardHolder
+	}
+	if opts != nil {
+		if strings.TrimSpace(opts.CardNumber) != "" {
+			cardNum = strings.TrimSpace(opts.CardNumber)
+		}
+		if strings.TrimSpace(opts.CardHolder) != "" {
+			cardHold = strings.TrimSpace(opts.CardHolder)
+		}
+	}
+
+	fa := lang == models.TelegramLanguageFA
+
 	cardLine := ""
-	if settings.CardNumber != "" {
-		holder := settings.CardHolder
+	if cardNum != "" {
+		holder := cardHold
 		if holder == "" {
 			holder = "—"
 		}
-		if isFa(settings) {
-			cardLine = fmt.Sprintf("\n\n💳 <b>شماره کارت برای واریز:</b>\n<pre>%s</pre>دارنده: %s",
-				htmlEsc(settings.CardNumber), htmlEsc(holder))
+		if fa {
+			cardLine = fmt.Sprintf("\n\n💳 <b>شماره کارت برای واریز:</b>\n<pre>%s</pre>\n<b>دارنده:</b> %s",
+				htmlEsc(cardNum), htmlEsc(holder))
 		} else {
-			cardLine = fmt.Sprintf("\n\n💳 <b>Payment card:</b>\n<pre>%s</pre>Holder: %s",
-				htmlEsc(settings.CardNumber), htmlEsc(holder))
+			cardLine = fmt.Sprintf("\n\n💳 <b>Payment card:</b>\n<pre>%s</pre>\n<b>Holder:</b> %s",
+				htmlEsc(cardNum), htmlEsc(holder))
 		}
 	}
-	if isFa(settings) {
-		return "✅ <b>درخواست شما تایید شد!</b>\n\n" +
-			"🧾 لطفاً تصویر رسید پرداخت را به‌صورت <b>عکس</b> به همین چت ارسال کنید." +
-			cardLine
+
+	replyBlock := ""
+	if opts != nil && strings.TrimSpace(opts.ReplyToUser) != "" {
+		reply := strings.TrimSpace(opts.ReplyToUser)
+		if fa {
+			replyBlock = "\n\n💬 <b>پیام ادمین:</b>\n" + htmlEsc(reply)
+		} else {
+			replyBlock = "\n\n💬 <b>Message from admin:</b>\n" + htmlEsc(reply)
+		}
 	}
-	return "✅ <b>Your request has been approved!</b>\n\n" +
-		"🧾 Please send the payment receipt as a <b>photo</b> to this chat." +
-		cardLine
+
+	missingCard := ""
+	if cardNum == "" {
+		if fa {
+			missingCard = "\n\n⚠️ <b>اطلاعات کارت ثبت نشده است.</b> لطفاً با ادمین برای جزئیات پرداخت هماهنگ کنید."
+		} else {
+			missingCard = "\n\n⚠️ <b>No payment card was configured.</b> Please contact the administrator for payment instructions."
+		}
+	}
+
+	receiptLine := ""
+	if fa {
+		receiptLine = "\n\n🧾 لطفاً تصویر رسید پرداخت را به‌صورت <b>عکس</b> به همین چت ارسال کنید."
+	} else {
+		receiptLine = "\n\n🧾 Please send the payment receipt as a <b>photo</b> to this chat."
+	}
+
+	if fa {
+		return "\u200f✅ <b>درخواست شما تایید شد!</b>" +
+			replyBlock + cardLine + receiptLine + missingCard
+	}
+	return "✅ <b>Your request has been approved!</b>" +
+		replyBlock + cardLine + receiptLine + missingCard
 }
 
 func formatRejectedMessage(settings *models.TelegramSettings, adminNote string) string {

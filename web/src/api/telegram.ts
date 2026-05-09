@@ -118,10 +118,18 @@ export const TelegramAPI = {
         });
         return res.data as Blob;
     },
-    approve: (id: number, adminNote?: string) =>
+    approve: (
+        id: number,
+        payload?: {
+            admin_note?: string;
+            card_number?: string;
+            card_holder?: string;
+            reply_to_user?: string;
+        }
+    ) =>
         api.post<TelegramRequestModel>(
             `/telegram/requests/${id}/approve`,
-            { admin_note: adminNote ?? '' },
+            payload ?? {},
             auth()
         ),
     reject: (id: number, adminNote?: string) =>

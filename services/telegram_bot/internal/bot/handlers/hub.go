@@ -175,6 +175,32 @@ func (h *Hub) respond(chatID int64, srcMsgID int, text string, markup *tgbotapi.
 }
 
 func adminMenuKeyboard(lang, panelURL string) tgbotapi.InlineKeyboardMarkup {
+	if lang == models.TelegramLanguageFA {
+		rows := [][]tgbotapi.InlineKeyboardButton{
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminPending), cbAdminPending),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminReceipts), cbAdminReceipts),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminStats), cbAdminStats),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminUserView), cbMainMenu),
+			),
+		}
+		if panelURL != "" {
+			rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonURL(i18n.T(lang, i18n.BtnOpenPanel), panelURL),
+			))
+		}
+		rows = append(rows, tgbotapi.NewInlineKeyboardRow(
+			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnLanguage), cbLanguage),
+		))
+		return tgbotapi.NewInlineKeyboardMarkup(rows...)
+	}
+
 	rows := [][]tgbotapi.InlineKeyboardButton{
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminPending), cbAdminPending),
@@ -197,6 +223,25 @@ func adminMenuKeyboard(lang, panelURL string) tgbotapi.InlineKeyboardMarkup {
 }
 
 func mainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	if lang == models.TelegramLanguageFA {
+		return tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAddAccount), cbAddAccount),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnMyAccounts), cbMyAccounts),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnNewOrder), cbNewOrder),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnLanguage), cbLanguage),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnHelp), cbHelp),
+			),
+		)
+	}
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAddAccount), cbAddAccount),
@@ -215,6 +260,28 @@ func mainMenuKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
 // adminUserViewKeyboard is the regular user menu with an extra "Back to Admin" row at the bottom,
 // shown when the admin is previewing the user view.
 func adminUserViewKeyboard(lang string) tgbotapi.InlineKeyboardMarkup {
+	if lang == models.TelegramLanguageFA {
+		return tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAddAccount), cbAddAccount),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnMyAccounts), cbMyAccounts),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnNewOrder), cbNewOrder),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnLanguage), cbLanguage),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnHelp), cbHelp),
+			),
+			tgbotapi.NewInlineKeyboardRow(
+				tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAdminBack), cbAdminMenu),
+			),
+		)
+	}
 	return tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardRow(
 			tgbotapi.NewInlineKeyboardButtonData(i18n.T(lang, i18n.BtnAddAccount), cbAddAccount),

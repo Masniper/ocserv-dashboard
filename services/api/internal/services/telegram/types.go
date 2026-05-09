@@ -59,6 +59,10 @@ type RequestsResponse struct {
 
 type ApproveData struct {
 	AdminNote string `json:"admin_note" validate:"omitempty,max=1024"`
+	// Optional overrides; empty strings fall back to Telegram settings card_number/card_holder.
+	CardNumber  string `json:"card_number" validate:"omitempty,max=64"`
+	CardHolder  string `json:"card_holder" validate:"omitempty,max=128"`
+	ReplyToUser string `json:"reply_to_user" validate:"omitempty,max=1024"`
 }
 
 type RejectData struct {

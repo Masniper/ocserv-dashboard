@@ -22,6 +22,9 @@ const size = 20;
 const detailDialog = ref(false);
 const selected = ref<TelegramRequestModel | null>(null);
 const adminNote = ref('');
+const approveCardNumber = ref('');
+const approveCardHolder = ref('');
+const replyToUser = ref('');
 const overrideUsername = ref('');
 const overridePassword = ref('');
 const owner = ref('');
@@ -58,6 +61,18 @@ const loadPackages = async () => {
 const openDetails = async (req: TelegramRequestModel) => {
     selected.value = req;
     adminNote.value = req.admin_note || '';
+    replyToUser.value = '';
+    approveCardNumber.value = '';
+    approveCardHolder.value = '';
+    if (req.status === 'pending') {
+        try {
+            const s = await TelegramAPI.getSettings();
+            approveCardNumber.value = s.data.card_number || '';
+            approveCardHolder.value = s.data.card_holder || '';
+        } catch {
+            /* ignore */
+        }
+    }
     overrideUsername.value = req.desired_username || '';
     overridePassword.value = '';
     owner.value = '';
@@ -87,7 +102,12 @@ const approve = async () => {
     if (!selected.value) return;
     loading.value = true;
     try {
-        await TelegramAPI.approve(selected.value.id, adminNote.value);
+        await TelegramAPI.approve(selected.value.id, {
+            admin_note: adminNote.value || undefined,
+            card_number: approveCardNumber.value || undefined,
+            card_holder: approveCardHolder.value || undefined,
+            reply_to_user: replyToUser.value || undefined
+        });
         snackbar.show({ id: 1, message: t('TELEGRAM_REQUEST_APPROVED'), color: 'success', timeout: 3000 });
         closeDetails();
         await load();
@@ -248,6 +268,42 @@ onBeforeUnmount(() => {
                         variant="outlined"
                         density="comfortable"
                     />
+
+                    <template v-if="selected.status === 'pending'">
+                        <v-row dense class="mt-2">
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    v-model="approveCardNumber"
+                                    :label="t('TELEGRAM_APPROVE_CARD_NUMBER')"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    :hint="t('TELEGRAM_APPROVE_CARD_HINT')"
+                                    persistent-hint
+                                />
+                            </v-col>
+                            <v-col cols="12" md="6">
+                                <v-text-field
+                                    v-model="approveCardHolder"
+                                    :label="t('TELEGRAM_APPROVE_CARD_HOLDER')"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    :hint="t('TELEGRAM_APPROVE_CARD_HOLDER_HINT')"
+                                    persistent-hint
+                                />
+                            </v-col>
+                            <v-col cols="12">
+                                <v-textarea
+                                    v-model="replyToUser"
+                                    :label="t('TELEGRAM_REPLY_TO_USER')"
+                                    rows="3"
+                                    variant="outlined"
+                                    density="comfortable"
+                                    :hint="t('TELEGRAM_REPLY_TO_USER_HINT')"
+                                    persistent-hint
+                                />
+                            </v-col>
+                        </v-row>
+                    </template>
 
                     <template v-if="selected.status === 'payment_uploaded' && selected.type === 'new'">
                         <v-row class="mt-1">

@@ -25,6 +25,8 @@ type TelegramSettingsRepo interface {
 type TelegramAccountRepo interface {
 	AccountsForOcservUser(ctx context.Context, ocservUserID uint) ([]models.TelegramAccount, error)
 	DeleteAccount(ctx context.Context, id uint) error
+	// PreferredLanguageForChat returns the language from the oldest linked telegram_accounts row for this chat, or empty if none.
+	PreferredLanguageForChat(ctx context.Context, chatID int64) (string, error)
 }
 
 type TelegramPackageRepo interface {
@@ -109,6 +111,21 @@ func (r *TelegramRepository) DeleteAccount(ctx context.Context, id uint) error {
 	return r.db.WithContext(ctx).
 		Where("id = ?", id).
 		Delete(&models.TelegramAccount{}).Error
+}
+
+func (r *TelegramRepository) PreferredLanguageForChat(ctx context.Context, chatID int64) (string, error) {
+	var acc models.TelegramAccount
+	err := r.db.WithContext(ctx).
+		Where("chat_id = ?", chatID).
+		Order("id ASC").
+		First(&acc).Error
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return "", nil
+		}
+		return "", err
+	}
+	return acc.Language, nil
 }
 
 // ==========================
