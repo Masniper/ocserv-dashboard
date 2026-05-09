@@ -580,7 +580,7 @@ func (h *Hub) HandleStateful(ctx context.Context, m *tgbotapi.Message) bool {
 		if note == "/skip" {
 			note = ""
 		}
-		h.finalizeNewRequest(ctx, chatID, sess, note, lang)
+		h.finalizeNewRequest(ctx, chatID, sess, note, lang, fromUsername(m))
 		return true
 
 	case session.WaitingNoteForRenew:
@@ -588,7 +588,7 @@ func (h *Hub) HandleStateful(ctx context.Context, m *tgbotapi.Message) bool {
 		if note == "/skip" {
 			note = ""
 		}
-		h.finalizeRenewRequest(ctx, chatID, sess, note, lang)
+		h.finalizeRenewRequest(ctx, chatID, sess, note, lang, fromUsername(m))
 		return true
 	}
 	return false
@@ -830,17 +830,18 @@ func (h *Hub) PickedPackageRenew(ctx context.Context, chatID int64, packageID ui
 	h.respond(chatID, srcMsgID, i18n.T(lang, i18n.AskMessage), nil)
 }
 
-func (h *Hub) finalizeNewRequest(ctx context.Context, chatID int64, sess *session.Session, note, lang string) {
+func (h *Hub) finalizeNewRequest(ctx context.Context, chatID int64, sess *session.Session, note, lang, tgUsername string) {
 	pkgID := sess.BufferPackage
 	desired := sess.BufferDesired
 
 	req := &models.TelegramRequest{
-		ChatID:          chatID,
-		Type:            models.TelegramRequestTypeNew,
-		PackageID:       ptrUint(pkgID),
-		DesiredUsername: desired,
-		Status:          models.TelegramRequestStatusPending,
-		UserMessage:     note,
+		ChatID:           chatID,
+		TelegramUsername: tgUsername,
+		Type:             models.TelegramRequestTypeNew,
+		PackageID:        ptrUint(pkgID),
+		DesiredUsername:  desired,
+		Status:           models.TelegramRequestStatusPending,
+		UserMessage:      note,
 	}
 	created, err := h.deps.Repo.CreateRequest(ctx, req)
 	if err != nil {
@@ -852,22 +853,21 @@ func (h *Hub) finalizeNewRequest(ctx context.Context, chatID int64, sess *sessio
 	h.send(chatID, i18n.T(lang, i18n.RequestCreated))
 	h.SendMainMenu(ctx, chatID, lang, 0)
 
-	go h.notifyAdmin(ctx, "New account request",
-		fmt.Sprintf("Request #%d (new) — chat=%d desired=%s package=%d note=%s",
-			created.ID, chatID, desired, pkgID, note))
+	go h.notifyAdminNewRequest(ctx, created)
 }
 
-func (h *Hub) finalizeRenewRequest(ctx context.Context, chatID int64, sess *session.Session, note, lang string) {
+func (h *Hub) finalizeRenewRequest(ctx context.Context, chatID int64, sess *session.Session, note, lang, tgUsername string) {
 	pkgID := sess.BufferPackage
 	target := sess.BufferTargetID
 
 	req := &models.TelegramRequest{
-		ChatID:         chatID,
-		Type:           models.TelegramRequestTypeRenew,
-		PackageID:      ptrUint(pkgID),
-		TargetOcservID: ptrUint(target),
-		Status:         models.TelegramRequestStatusPending,
-		UserMessage:    note,
+		ChatID:           chatID,
+		TelegramUsername: tgUsername,
+		Type:             models.TelegramRequestTypeRenew,
+		PackageID:        ptrUint(pkgID),
+		TargetOcservID:   ptrUint(target),
+		Status:           models.TelegramRequestStatusPending,
+		UserMessage:      note,
 	}
 	created, err := h.deps.Repo.CreateRequest(ctx, req)
 	if err != nil {
@@ -879,9 +879,7 @@ func (h *Hub) finalizeRenewRequest(ctx context.Context, chatID int64, sess *sess
 	h.send(chatID, i18n.T(lang, i18n.RequestCreated))
 	h.SendMainMenu(ctx, chatID, lang, 0)
 
-	go h.notifyAdmin(ctx, "Renewal request",
-		fmt.Sprintf("Request #%d (renew) — chat=%d target_user=%d package=%d note=%s",
-			created.ID, chatID, target, pkgID, note))
+	go h.notifyAdminRenewRequest(ctx, created)
 }
 
 // =============================================================================
@@ -927,24 +925,174 @@ func (h *Hub) HandlePhoto(ctx context.Context, m *tgbotapi.Message) {
 
 	h.send(chatID, i18n.T(lang, i18n.ReceiptSaved))
 
-	go h.notifyAdmin(ctx, "Receipt uploaded",
-		fmt.Sprintf("Receipt for request #%d uploaded by chat=%d", pending.ID, chatID))
+	go h.notifyAdminReceipt(ctx, pending, m)
 }
 
 // =============================================================================
 // Misc
 // =============================================================================
 
-func (h *Hub) notifyAdmin(ctx context.Context, title, body string) {
+// notifyAdmin sends a richly formatted (HTML, parse_mode=HTML) notification to
+// the configured admin chat. Falls back silently when no admin chat is set.
+func (h *Hub) notifyAdmin(ctx context.Context, body string) {
 	settings, err := h.deps.Repo.Settings(ctx)
 	if err != nil || settings.AdminChatID == 0 {
 		return
 	}
-	text := fmt.Sprintf("[%s]\n%s", title, body)
-	msg := tgbotapi.NewMessage(settings.AdminChatID, text)
+	msg := tgbotapi.NewMessage(settings.AdminChatID, body)
+	msg.ParseMode = parseModeHTML
+	msg.DisableWebPagePreview = true
 	if _, err := h.deps.API.Send(msg); err != nil {
 		logger.Warn("telegram_bot: notifyAdmin failed: %v", err)
 	}
+}
+
+// notifyAdminNewRequest builds and sends the admin alert for a brand-new
+// account request. Uses HTML to embed:
+//   - A clickable contact link to the user (works even without @username).
+//   - The chosen package details (title, days, GB, price).
+//   - The user's note when present.
+func (h *Hub) notifyAdminNewRequest(ctx context.Context, req *models.TelegramRequest) {
+	pkg := h.lookupPackage(ctx, req.PackageID)
+	body := "🆕 <b>New account request</b>\n" +
+		"<b>Request:</b> <code>#" + strconv.FormatUint(uint64(req.ID), 10) + "</code>\n\n" +
+		formatRequester(req) +
+		"<b>Desired username:</b> <code>" + safeText(req.DesiredUsername) + "</code>\n" +
+		formatPackage(pkg) +
+		formatUserNote(req.UserMessage) +
+		"\n👉 <i>Open the dashboard panel to approve and reply.</i>"
+	h.notifyAdmin(ctx, body)
+}
+
+// notifyAdminRenewRequest builds and sends the admin alert for a renewal
+// request. In addition to the package details, it shows the target ocserv
+// account (username + current expiry) so the admin can sanity-check the
+// renewal without opening the dashboard.
+func (h *Hub) notifyAdminRenewRequest(ctx context.Context, req *models.TelegramRequest) {
+	pkg := h.lookupPackage(ctx, req.PackageID)
+	target := h.lookupOcservUser(ctx, req.TargetOcservID)
+	body := "🔄 <b>Renewal request</b>\n" +
+		"<b>Request:</b> <code>#" + strconv.FormatUint(uint64(req.ID), 10) + "</code>\n\n" +
+		formatRequester(req) +
+		formatTargetAccount(target) +
+		formatPackage(pkg) +
+		formatUserNote(req.UserMessage) +
+		"\n👉 <i>Open the dashboard panel to approve and reply.</i>"
+	h.notifyAdmin(ctx, body)
+}
+
+// notifyAdminReceipt fires when a user has uploaded a payment receipt. The
+// receipt photo itself is forwarded to the admin chat so the admin can decide
+// at a glance, with a caption pointing back at the request.
+func (h *Hub) notifyAdminReceipt(ctx context.Context, req *models.TelegramRequest, m *tgbotapi.Message) {
+	settings, err := h.deps.Repo.Settings(ctx)
+	if err != nil || settings.AdminChatID == 0 {
+		return
+	}
+
+	caption := "🧾 <b>Receipt uploaded</b>\n" +
+		"<b>Request:</b> <code>#" + strconv.FormatUint(uint64(req.ID), 10) + "</code>\n\n" +
+		formatRequester(req) +
+		"\n👉 <i>Confirm the payment in the dashboard panel.</i>"
+
+	// Forward the photo when we have it; otherwise fall back to a plain alert
+	// so the admin still gets pinged.
+	if m != nil && len(m.Photo) > 0 {
+		photo := m.Photo[len(m.Photo)-1]
+		fwd := tgbotapi.NewPhoto(settings.AdminChatID, tgbotapi.FileID(photo.FileID))
+		fwd.Caption = caption
+		fwd.ParseMode = parseModeHTML
+		if _, err := h.deps.API.Send(fwd); err == nil {
+			return
+		}
+	}
+	h.notifyAdmin(ctx, caption)
+}
+
+// fromUsername returns the @username of the message sender, or "" when not set
+// (Telegram users without a public handle).
+func fromUsername(m *tgbotapi.Message) string {
+	if m == nil || m.From == nil {
+		return ""
+	}
+	return strings.TrimSpace(m.From.UserName)
+}
+
+// formatRequester renders the requester block: a tg:// deep link that opens a
+// 1:1 chat with the user (works even without a public @username), plus chat
+// id and @handle when available.
+func formatRequester(req *models.TelegramRequest) string {
+	if req == nil {
+		return ""
+	}
+	chatStr := strconv.FormatInt(req.ChatID, 10)
+	link := `<a href="tg://user?id=` + chatStr + `">Open chat</a>`
+	out := "<b>From:</b> " + link + " · <code>" + chatStr + "</code>"
+	if h := strings.TrimPrefix(strings.TrimSpace(req.TelegramUsername), "@"); h != "" {
+		out += " · @" + safeText(h)
+	}
+	return out + "\n"
+}
+
+func formatTargetAccount(user *models.OcservUser) string {
+	if user == nil {
+		return "<b>Target account:</b> <i>not found</i>\n"
+	}
+	expires := "—"
+	if user.ExpireAt != nil {
+		expires = user.ExpireAt.Format("2006-01-02")
+	}
+	return "<b>Target account:</b> <code>" + safeText(user.Username) + "</code>\n" +
+		"<b>Current expiry:</b> " + expires + "\n"
+}
+
+func formatPackage(p *models.TelegramPackage) string {
+	if p == nil {
+		return "<b>Package:</b> <i>not found</i>\n"
+	}
+	out := "<b>Package:</b> " + safeText(p.Title) +
+		" — " + strconv.Itoa(p.Days) + "d · " +
+		strconv.Itoa(p.TrafficSizeGB) + "GB"
+	if strings.TrimSpace(p.PriceText) != "" {
+		out += " · " + safeText(p.PriceText)
+	}
+	return out + "\n"
+}
+
+func formatUserNote(note string) string {
+	note = strings.TrimSpace(note)
+	if note == "" {
+		return ""
+	}
+	return "<b>Note:</b> " + safeText(note) + "\n"
+}
+
+// safeText HTML-escapes user input so it can be safely interpolated into the
+// admin notification template.
+func safeText(s string) string {
+	return html.EscapeString(s)
+}
+
+func (h *Hub) lookupPackage(ctx context.Context, id *uint) *models.TelegramPackage {
+	if id == nil {
+		return nil
+	}
+	pkg, err := h.deps.Repo.PackageByID(ctx, *id)
+	if err != nil {
+		return nil
+	}
+	return pkg
+}
+
+func (h *Hub) lookupOcservUser(ctx context.Context, id *uint) *models.OcservUser {
+	if id == nil {
+		return nil
+	}
+	user, err := h.deps.Repo.OcservUserByID(ctx, *id)
+	if err != nil {
+		return nil
+	}
+	return user
 }
 
 func ptrUint(v uint) *uint {
