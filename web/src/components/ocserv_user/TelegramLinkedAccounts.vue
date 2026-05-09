@@ -36,44 +36,64 @@ onMounted(load);
 </script>
 
 <template>
-    <v-card variant="outlined" class="mt-4">
-        <v-card-title class="text-h6 d-flex align-center">
-            <v-icon class="me-2">mdi-robot</v-icon>
+    <div class="bg-surface shadow rounded-lg p-4">
+        <h2 class="text-lg font-semibold mb-3 text-capitalize d-flex align-center">
+            <v-icon class="me-2" color="primary">mdi-robot</v-icon>
             {{ t('TELEGRAM_LINKED_ACCOUNTS') }}
-        </v-card-title>
-        <v-card-text>
-            <div v-if="!accounts.length" class="text-grey">
-                {{ t('TELEGRAM_NO_LINKED_ACCOUNTS') }}
-            </div>
-            <v-table v-else density="compact">
-                <thead>
-                    <tr>
-                        <th>{{ t('CHAT_ID') }}</th>
-                        <th>{{ t('TELEGRAM_USERNAME') }}</th>
-                        <th>{{ t('LANGUAGE') }}</th>
-                        <th>{{ t('CREATED_AT') }}</th>
-                        <th>{{ t('ACTION') }}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="a in accounts" :key="a.id">
-                        <td>{{ a.chat_id }}</td>
-                        <td>{{ a.telegram_username || '—' }}</td>
-                        <td>{{ a.language }}</td>
-                        <td>{{ new Date(a.created_at).toLocaleString() }}</td>
-                        <td>
-                            <v-btn
-                                icon="mdi-link-variant-off"
-                                color="error"
-                                size="small"
-                                variant="text"
-                                :loading="loading"
-                                @click="remove(a.id)"
-                            />
-                        </td>
-                    </tr>
-                </tbody>
-            </v-table>
-        </v-card-text>
-    </v-card>
+        </h2>
+
+        <v-progress-linear :active="loading" indeterminate color="primary" class="mb-2" />
+
+        <div v-if="!loading && !accounts.length" class="text-grey ms-5 text-capitalize">
+            {{ t('TELEGRAM_NO_LINKED_ACCOUNTS') }}
+        </div>
+
+        <v-table v-else-if="accounts.length" density="compact" class="mx-3">
+            <thead>
+                <tr class="text-capitalize bg-lightprimary">
+                    <th class="text-left">{{ t('CHAT_ID') }}</th>
+                    <th class="text-left">{{ t('TELEGRAM_USERNAME') }}</th>
+                    <th class="text-left">{{ t('LANGUAGE') }}</th>
+                    <th class="text-left">{{ t('CREATED_AT') }}</th>
+                    <th class="text-left">{{ t('ACTION') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr v-for="a in accounts" :key="a.id">
+                    <td>
+                        <code>{{ a.chat_id }}</code>
+                    </td>
+                    <td>
+                        <a
+                            v-if="a.telegram_username"
+                            :href="`https://t.me/${a.telegram_username}`"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="text-primary"
+                        >
+                            @{{ a.telegram_username }}
+                        </a>
+                        <span v-else class="text-warning italic">—</span>
+                    </td>
+                    <td class="text-uppercase">{{ a.language }}</td>
+                    <td>{{ new Date(a.created_at).toLocaleString() }}</td>
+                    <td>
+                        <v-tooltip :text="t('TELEGRAM_UNLINK_ACCOUNT')">
+                            <template #activator="{ props: tip }">
+                                <v-btn
+                                    v-bind="tip"
+                                    icon="mdi-link-variant-off"
+                                    color="error"
+                                    size="small"
+                                    variant="text"
+                                    :loading="loading"
+                                    @click="remove(a.id)"
+                                />
+                            </template>
+                        </v-tooltip>
+                    </td>
+                </tr>
+            </tbody>
+        </v-table>
+    </div>
 </template>

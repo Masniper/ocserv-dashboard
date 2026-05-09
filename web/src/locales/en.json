@@ -286,6 +286,7 @@
   "TELEGRAM_LINKED_ACCOUNTS": "linked telegram accounts",
   "TELEGRAM_LOW_QUOTA_THRESHOLD_MB": "low quota threshold (MB)",
   "TELEGRAM_NO_LINKED_ACCOUNTS": "no telegram accounts are linked to this user.",
+  "TELEGRAM_UNLINK_ACCOUNT": "unlink this account",
   "TELEGRAM_OCSERV_HOST": "ocserv host",
   "TELEGRAM_OCSERV_HOST_HINT": "shown to bot users when delivering new accounts (host[:port])",
   "TELEGRAM_CARD_NUMBER": "Payment Card Number",

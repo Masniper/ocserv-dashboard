@@ -286,6 +286,7 @@
   "TELEGRAM_LINKED_ACCOUNTS": "اکانت‌های لینک‌شده تلگرام",
   "TELEGRAM_LOW_QUOTA_THRESHOLD_MB": "آستانه کم‌حجم (مگابایت)",
   "TELEGRAM_NO_LINKED_ACCOUNTS": "هیچ اکانت تلگرامی به این کاربر لینک نشده است.",
+  "TELEGRAM_UNLINK_ACCOUNT": "حذف لینک این اکانت",
   "TELEGRAM_OCSERV_HOST": "آدرس سرور Ocserv",
   "TELEGRAM_OCSERV_HOST_HINT": "هنگام تحویل اکانت جدید به کاربر نمایش داده می‌شود (host[:port])",
   "TELEGRAM_CARD_NUMBER": "شماره کارت بانکی",
