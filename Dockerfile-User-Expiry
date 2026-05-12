@@ -1,7 +1,7 @@
 # -----------------------------
 # Builder Stage
 # -----------------------------
-FROM golang:1.25.0 AS builder
+FROM golang:1.25 AS builder
 
 ENV CGO_ENABLED=1
 ENV GOOS=linux
@@ -42,14 +42,9 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy the Go binary from the builder stage
-COPY --from=builder /app/user_expiry /usr/local/bin/user_expiry
+COPY --from=builder --chmod=755 /app/user_expiry /usr/local/bin/user_expiry
 
-COPY services/user_expiry/scripts/start.sh /start.sh
-
-RUN chmod +x /start.sh
-
-# Make binary executable
-RUN chmod +x /usr/local/bin/user_expiry
+COPY --chmod=755 services/user_expiry/scripts/start.sh /start.sh
 
 # Set up volume for database persistence
 VOLUME ["/usr/local/bin/db", "/usr/local/bin/cron_journal"]

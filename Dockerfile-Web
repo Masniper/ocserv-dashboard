@@ -41,9 +41,7 @@ RUN apk add --no-cache ca-certificates \
 # Copy custom Nginx startup script
 COPY configs/nginx_docker.conf  /etc/nginx/conf.d/site.conf
 
-COPY scripts/docker_nginx_entrypoint.sh /entrypoint.sh
-
-RUN chmod +x /entrypoint.sh
+COPY --chmod=755 scripts/docker_nginx_entrypoint.sh /entrypoint.sh
 
 COPY --from=vue /app/dist /var/www/site
 

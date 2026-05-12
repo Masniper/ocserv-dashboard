@@ -1,7 +1,7 @@
 # -----------------------------
 # Builder Stage
 # -----------------------------
-FROM golang:1.25.0 AS builder
+FROM golang:1.25 AS builder
 
 ARG OCSERV_VERSION
 
@@ -83,11 +83,8 @@ WORKDIR /usr/local/bin
 COPY --from=builder /app/api /usr/local/bin/api
 COPY --from=builder /webhook/webhook /usr/local/bin/webhook
 
-COPY scripts/docker_ocserv_entrypoint.sh /entrypoint.sh
-COPY scripts/docker_ocserv_server.sh /server.sh
-
-# Make binaries and scripts executable
-RUN chmod +x /entrypoint.sh /server.sh /usr/local/bin/api /usr/local/bin/webhook
+COPY --chmod=755 scripts/docker_ocserv_entrypoint.sh /entrypoint.sh
+COPY --chmod=755 scripts/docker_ocserv_server.sh /server.sh
 
 # Expose ports
 EXPOSE 443/tcp 443/udp 8080 8888

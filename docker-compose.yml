@@ -26,7 +26,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile-Ocserv
-    image: ocserv_users_management:ocserv_with_api
+    image: "ocserv_users_management:ocserv_with_api_${LATEST_RELEASE}"
     container_name: ocserv
     privileged: true
     env_file:
@@ -60,7 +60,7 @@ services:
       start_period: 20s
 
   log_stream:
-    image: ocserv_users_management:log_stream
+    image: "ocserv_users_management:log_stream_${LATEST_RELEASE}"
     build:
       context: .
       dockerfile: Dockerfile-Stream-Log
@@ -79,7 +79,7 @@ services:
     restart: unless-stopped
 
   user_expiry:
-    image: ocserv_users_management:user_expiry
+    image: "ocserv_users_management:user_expiry_${LATEST_RELEASE}"
     build:
       context: .
       dockerfile: Dockerfile-User-Expiry
@@ -98,7 +98,7 @@ services:
     restart: unless-stopped
 
   web:
-    image: ocserv_users_management:web
+    image: "ocserv_users_management:web_${LATEST_RELEASE}"
     build:
       context: .
       dockerfile: Dockerfile-Web

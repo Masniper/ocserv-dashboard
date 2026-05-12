@@ -24,7 +24,7 @@ uninstall_docker() {
 
     if [[ "$remove_images" =~ ^[Yy]$ ]]; then
         log "🗑️ Removing pulled Docker images..."
-        sudo docker rmi golang:1.25.0 debian:trixie-slim nginx:alpine -f 2>/dev/null || true
+        sudo docker rmi golang:1.25 debian:trixie-slim nginx:alpine -f 2>/dev/null || true
         ok "✅ Docker images removed."
     else
         log "⏭️ Skipping removal of Docker images."

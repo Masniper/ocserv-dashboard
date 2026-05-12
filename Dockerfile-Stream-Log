@@ -1,7 +1,7 @@
 # -----------------------------
 # Builder Stage
 # -----------------------------
-FROM golang:1.25.0 AS builder
+FROM golang:1.25 AS builder
 
 ENV CGO_ENABLED=1
 ENV GOOS=linux
@@ -42,14 +42,9 @@ RUN apt-get update && \
 WORKDIR /app
 
 # Copy the Go binary from the builder stage
-COPY --from=builder /app/log_stream /usr/local/bin/log_stream
+COPY --from=builder --chmod=755 /app/log_stream /usr/local/bin/log_stream
 
-COPY services/log_stream/scripts/server.sh /server.sh
-
-RUN chmod +x /server.sh
-
-# Make binary executable
-RUN chmod +x /usr/local/bin/log_stream
+COPY --chmod=755 services/log_stream/scripts/server.sh /server.sh
 
 # Set up volume for database persistence
 VOLUME ["/usr/local/bin/db"]

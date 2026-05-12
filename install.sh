@@ -51,7 +51,8 @@ POSTGRES_PORT=5432                                            # PostgreSQL port
 POSTGRES_DB=ocserv                                            # POSTGRES_DB
 POSTGRES_USER=ocserv                                          # POSTGRES_USER
 POSTGRES_PASSWORD=ocserv-passwd                               # POSTGRES_PASSWORD
-
+CURRENT_RELEASE=                                              # dashboard current release version
+LATEST_RELEASE=                                               # dashboard latest release version
 # ===============================
 # Function: ensure_root
 # Description:
@@ -563,7 +564,7 @@ setup_docker() {
             print_message success "🎉 Pulled successfully: $image"
         fi
     }
-    check_and_pull golang:1.25.0
+    check_and_pull golang:1.25
     check_and_pull debian:trixie-slim
     check_and_pull nginx:alpine
 
@@ -571,6 +572,9 @@ setup_docker() {
 
     print_message info "🛠 Change postgres host environment for docker mode ..."
     sed -i 's/^POSTGRES_HOST=.*/POSTGRES_HOST=ocserv-postgres/' "${ENV_FILE}"
+
+    print_message warn "🛠 Docker Compose Shutting Down..."
+    sudo docker compose down
 
     print_message info "🛠 Starting Docker Compose..."
     sudo docker compose up --build -d
@@ -658,6 +662,62 @@ deploy() {
     esac
 }
 
+
+# ===============================
+# Function: get_current_version
+# Description:
+#   Retrieves and returns the current application version.
+#
+# Returns:
+#   stdout -> version string
+#   exit 0 -> success
+#   exit 1 -> failure
+# ===============================
+get_current_version() {
+    local VERSION_FILE=".release"
+
+    # Validate version format
+    is_valid_version() {
+        [[ "$1" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]
+    }
+
+    # =========================
+    # Read current version
+    # =========================
+    if [ -f "$VERSION_FILE" ]; then
+        CURRENT_RELEASE=$(tr -d '[:space:]' < "$VERSION_FILE")
+
+        if ! is_valid_version "$CURRENT_RELEASE"; then
+            echo "Invalid version in $VERSION_FILE" >&2
+            CURRENT_RELEASE=""
+        fi
+    fi
+
+    # =========================
+    # Get latest from GitHub
+    # =========================
+    LATEST_RELEASE=$(
+        curl -fsSL https://api.github.com/repos/mmtaee/ocserv-dashboard/releases/latest \
+        | grep '"tag_name":' \
+        | sed -E 's/.*"([^"]+)".*/\1/'
+    )
+
+    if ! is_valid_version "$LATEST_RELEASE"; then
+        echo "Failed to get valid latest release" >&2
+        return 1
+    fi
+
+    # =========================
+    # Default current if missing
+    # =========================
+    if [ -z "$CURRENT_RELEASE" ]; then
+        CURRENT_RELEASE="$LATEST_RELEASE"
+        echo "$CURRENT_RELEASE" > "$VERSION_FILE"
+    fi
+
+    return 0
+}
+
 # ===============================
 # Function: main
 # Description:
@@ -714,6 +774,38 @@ main() {
         get_envs
         get_site_lang
         set_environment
+    fi
+
+    if ! get_current_version; then
+        echo "Failed to get versions"
+        exit 1
+    fi
+
+    echo "Current Dashboard Release: $CURRENT_RELEASE"
+    echo "Latest Dashboard Release: $LATEST_RELEASE"
+
+    # Compare versions
+    if [ -z "$CURRENT_RELEASE" ] || [ -z "$LATEST_RELEASE" ]; then
+        echo "ERROR: Missing version information"
+        exit 1
+    fi
+
+    if [ "$CURRENT_RELEASE" != "$LATEST_RELEASE" ]; then
+        echo "ERROR: Dashboard update required"
+        exit 1
+    fi
+
+    # Save version into .env file
+    if grep -q '^CURRENT_RELEASE=' "$ENV_FILE"; then
+        sed -i "s/^CURRENT_RELEASE=.*/CURRENT_RELEASE=$CURRENT_RELEASE/" "$ENV_FILE"
+    else
+        echo "CURRENT_RELEASE=$CURRENT_RELEASE" >> "$ENV_FILE"
+    fi
+
+    if grep -q '^LATEST_RELEASE=' "$ENV_FILE"; then
+        sed -i "s/^LATEST_RELEASE=.*/LATEST_RELEASE=$LATEST_RELEASE/" "$ENV_FILE"
+    else
+        echo "LATEST_RELEASE=$LATEST_RELEASE" >> "$ENV_FILE"
     fi
 
     # Deploy based on selected method
