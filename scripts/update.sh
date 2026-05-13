@@ -3,9 +3,9 @@
 # Script: update.sh
 # Description:
 #   One-shot in-place upgrade for an existing standalone systemd
-#   installation of the Ocserv dashboard. Pulls the latest code,
-#   rebuilds the Go backend services, rebuilds and redeploys the
-#   Vite frontend, and restarts the systemd units.
+#   installation of the Ocserv dashboard. Backs up PostgreSQL (pg_dump),
+#   pulls the latest code, rebuilds the Go backend services, rebuilds and
+#   redeploys the Vite frontend, and restarts the systemd units.
 #
 # Why this script exists:
 #   Running only systemd_backend.sh after a git pull leaves the
@@ -16,6 +16,10 @@
 #
 # Usage:
 #   sudo ./scripts/update.sh
+#
+# Optional (from .env or environment):
+#   DB_BACKUP_DIR   — dump directory (default: /var/backups/ocserv-dashboard)
+#   SKIP_DB_BACKUP  — set to 1 to skip pg_dump
 # ==============================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,6 +48,41 @@ if [[ -f "${ROOT_DIR}/.env" ]]; then
 else
     warn ".env not found at ${ROOT_DIR}/.env — proceeding with system defaults"
 fi
+
+backup_database_before_update() {
+    if [[ "${SKIP_DB_BACKUP:-}" == "1" ]]; then
+        warn "Skipping database backup (SKIP_DB_BACKUP=1)."
+        return 0
+    fi
+    if [[ -z "${POSTGRES_USER:-}" || -z "${POSTGRES_DB:-}" ]]; then
+        warn "POSTGRES_USER or POSTGRES_DB not set; skipping database backup."
+        return 0
+    fi
+    if ! command -v pg_dump >/dev/null 2>&1; then
+        die "pg_dump not found. Install postgresql-client (e.g. apt install postgresql-client) or set SKIP_DB_BACKUP=1."
+    fi
+
+    local host port backup_dir ts outfile
+    host="${POSTGRES_HOST:-localhost}"
+    port="${POSTGRES_PORT:-5432}"
+    backup_dir="${DB_BACKUP_DIR:-/var/backups/ocserv-dashboard}"
+    ts="$(date +%Y%m%d-%H%M%S)"
+    outfile="${backup_dir}/${POSTGRES_DB}-${ts}.dump"
+
+    log "Backing up PostgreSQL (${POSTGRES_DB} @ ${host}:${port}) → ${outfile}"
+    mkdir -p "${backup_dir}"
+    PGPASSWORD="${POSTGRES_PASSWORD:-}" pg_dump \
+        -h "${host}" \
+        -p "${port}" \
+        -U "${POSTGRES_USER}" \
+        -d "${POSTGRES_DB}" \
+        -Fc \
+        -f "${outfile}"
+    chmod 600 "${outfile}"
+    ok "Database backup complete"
+}
+
+backup_database_before_update
 
 # 1) Pull the latest source. Try fork/master first (developer setup), then
 #    origin/master, then just `git pull` (whatever the current branch tracks).
