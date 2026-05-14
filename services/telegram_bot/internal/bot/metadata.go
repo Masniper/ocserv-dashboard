@@ -1,20 +1,93 @@
 package bot
 
 import (
+	_ "embed"
+	"encoding/json"
+	"os"
+	"strings"
+	"sync"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/mmtaee/ocserv-dashboard/common/pkg/logger"
 )
 
+//go:embed metadata_locales.json
+var embeddedMetadataLocales []byte
+
+type metadataLocalesFile struct {
+	Commands          map[string][]metadataCmd `json:"commands"`
+	LongDescriptions  map[string]string        `json:"long_descriptions"`
+	ShortDescriptions map[string]string        `json:"short_descriptions"`
+}
+
+type metadataCmd struct {
+	Command     string `json:"command"`
+	Description string `json:"description"`
+}
+
+var (
+	metadataLocales   metadataLocalesFile
+	metadataLocalesMu sync.Once
+)
+
+func loadMetadataLocales() {
+	metadataLocalesMu.Do(func() {
+		if err := json.Unmarshal(embeddedMetadataLocales, &metadataLocales); err != nil {
+			logger.Error("telegram_bot: parse embedded metadata_locales.json: %v", err)
+			return
+		}
+		if p := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_METADATA_LOCALES_PATH")); p != "" {
+			if b, err := os.ReadFile(p); err == nil {
+				var extra metadataLocalesFile
+				if err := json.Unmarshal(b, &extra); err != nil {
+					logger.Warn("telegram_bot: optional metadata locales %s: %v", p, err)
+					return
+				}
+				mergeMetadataLocales(&extra)
+			}
+		}
+	})
+}
+
+func mergeMetadataLocales(extra *metadataLocalesFile) {
+	if extra.Commands != nil {
+		if metadataLocales.Commands == nil {
+			metadataLocales.Commands = map[string][]metadataCmd{}
+		}
+		for lang, cmds := range extra.Commands {
+			metadataLocales.Commands[strings.ToLower(lang)] = cmds
+		}
+	}
+	if extra.LongDescriptions != nil {
+		if metadataLocales.LongDescriptions == nil {
+			metadataLocales.LongDescriptions = map[string]string{}
+		}
+		for k, v := range extra.LongDescriptions {
+			metadataLocales.LongDescriptions[strings.ToLower(k)] = v
+		}
+	}
+	if extra.ShortDescriptions != nil {
+		if metadataLocales.ShortDescriptions == nil {
+			metadataLocales.ShortDescriptions = map[string]string{}
+		}
+		for k, v := range extra.ShortDescriptions {
+			metadataLocales.ShortDescriptions[strings.ToLower(k)] = v
+		}
+	}
+}
+
+func toBotCommands(cmds []metadataCmd) []tgbotapi.BotCommand {
+	out := make([]tgbotapi.BotCommand, 0, len(cmds))
+	for _, c := range cmds {
+		out = append(out, tgbotapi.BotCommand{Command: c.Command, Description: c.Description})
+	}
+	return out
+}
+
 // applyBotMetadata pushes a localised set of commands, descriptions and the
 // default menu button to BotFather every time the bot connects with a new
-// token. This is what powers:
-//
-//   - The "/" command picker that appears as users type, in both EN and FA.
-//   - The "What can this bot do?" intro box that shows on first launch.
-//   - The short profile description used in the bot's profile page and when
-//     the bot is shared.
-//   - The menu button next to the input field, which we lock to the commands
-//     list so users always have one tap access to /start, /help, /settings…
+// token. Strings are loaded from metadata_locales.json (embedded); override or
+// extend with TELEGRAM_BOT_METADATA_LOCALES_PATH. See docs/telegram-translations.md.
 //
 // All calls are best-effort and idempotent. Telegram silently ignores updates
 // that match the current value, so re-applying on every (re)connect is safe.
@@ -22,47 +95,29 @@ func applyBotMetadata(api *tgbotapi.BotAPI) {
 	if api == nil {
 		return
 	}
+	loadMetadataLocales()
 
-	commandsByLang := map[string][]tgbotapi.BotCommand{
-		"en": {
-			{Command: "start", Description: "Open the main menu"},
-			{Command: "help", Description: "Show help and supported commands"},
-			{Command: "settings", Description: "Bot settings"},
-			{Command: "language", Description: "Change bot language"},
-			{Command: "cancel", Description: "Cancel the current operation"},
-		},
-		"fa": {
-			{Command: "start", Description: "نمایش منوی اصلی"},
-			{Command: "help", Description: "راهنما و دستورها"},
-			{Command: "settings", Description: "تنظیمات ربات"},
-			{Command: "language", Description: "تغییر زبان"},
-			{Command: "cancel", Description: "لغو عملیات فعلی"},
-		},
-	}
-	for lang, cmds := range commandsByLang {
+	for lang, cmds := range metadataLocales.Commands {
+		if len(cmds) == 0 {
+			continue
+		}
+		bc := toBotCommands(cmds)
 		cfg := tgbotapi.NewSetMyCommandsWithScopeAndLanguage(
-			tgbotapi.NewBotCommandScopeAllPrivateChats(), lang, cmds...,
+			tgbotapi.NewBotCommandScopeAllPrivateChats(), lang, bc...,
 		)
 		if _, err := api.Request(cfg); err != nil {
 			logger.Warn("telegram_bot: SetMyCommands(%s) failed: %v", lang, err)
 		}
 	}
 
-	// Default scope (no language) — fallback for any unknown locale.
-	defaultCmds := commandsByLang["en"]
-	if _, err := api.Request(tgbotapi.NewSetMyCommands(defaultCmds...)); err != nil {
-		logger.Warn("telegram_bot: SetMyCommands(default) failed: %v", err)
+	defaultCmds := toBotCommands(metadataLocales.Commands["en"])
+	if len(defaultCmds) > 0 {
+		if _, err := api.Request(tgbotapi.NewSetMyCommands(defaultCmds...)); err != nil {
+			logger.Warn("telegram_bot: SetMyCommands(default) failed: %v", err)
+		}
 	}
 
-	// setMyDescription / setMyShortDescription / setChatMenuButton aren't
-	// surfaced as helpers in telegram-bot-api v5.5.1, so we hit the raw
-	// methods through MakeRequest. The Bot API returns 400 on no-op writes
-	// after an identical call, which is harmless.
-	descriptions := map[string]string{
-		"en": "Manage your VPN account directly from Telegram. Check your remaining quota and expiry, request renewals, order new accounts and upload payment receipts. You will be alerted automatically when your traffic runs low.",
-		"fa": "اکانت VPN خود را مستقیم از تلگرام مدیریت کنید: مشاهدهٔ مصرف و تاریخ انقضا، درخواست تمدید، سفارش اکانت جدید و ارسال تصویر رسید پرداخت. هنگام کاهش حجم به‌صورت خودکار مطلع می‌شوید.",
-	}
-	for lang, desc := range descriptions {
+	for lang, desc := range metadataLocales.LongDescriptions {
 		params := tgbotapi.Params{
 			"description":   desc,
 			"language_code": lang,
@@ -72,11 +127,7 @@ func applyBotMetadata(api *tgbotapi.BotAPI) {
 		}
 	}
 
-	shortDescriptions := map[string]string{
-		"en": "Self-service VPN account management on Telegram.",
-		"fa": "مدیریت سلف-سرویس اکانت VPN از طریق تلگرام.",
-	}
-	for lang, short := range shortDescriptions {
+	for lang, short := range metadataLocales.ShortDescriptions {
 		params := tgbotapi.Params{
 			"short_description": short,
 			"language_code":     lang,
@@ -86,8 +137,6 @@ func applyBotMetadata(api *tgbotapi.BotAPI) {
 		}
 	}
 
-	// Lock the menu button to the canonical commands list so users always
-	// see /start, /help, /settings… one tap away from the input field.
 	menuParams := tgbotapi.Params{
 		"menu_button": `{"type":"commands"}`,
 	}
