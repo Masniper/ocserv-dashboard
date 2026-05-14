@@ -101,18 +101,18 @@ const txPercentage = computed(() => {
                                     <h6 class="text-h6 text-capitalize text-body-1">
                                         {{ t('TOTAL') }} TX:
                                         <br />
-                                        <span class="text-muted"> {{ numberToFixer(donutData.tx, 8) }} GB </span>
+                                        <span class="text-high-emphasis"> {{ numberToFixer(donutData.tx, 8) }} GB </span>
                                     </h6>
                                     <h6 class="text-h6 text-capitalize text-body-1 mt-5">
                                         {{ t('TOTAL') }} RX:
                                         <br />
-                                        <span class="text-muted text-body-1">
+                                        <span class="text-high-emphasis text-body-1">
                                             {{ numberToFixer(donutData.rx, 8) }} GB
                                         </span>
                                     </h6>
                                     <h6 class="text-h6 text-capitalize text-body-1 mt-5">
                                         {{ t('AVERAGE') }} (TX):
-                                        <span class="text-muted text-body-1"> {{ txPercentage }}% </span>
+                                        <span class="text-high-emphasis text-body-1"> {{ txPercentage }}% </span>
                                     </h6>
                                 </v-col>
 
@@ -125,7 +125,7 @@ const txPercentage = computed(() => {
                                         <v-col v-if="donutData.rx != 0 && donutData.tx != 0" cols="12" md="12">
                                             <v-row align="center" justify="center">
                                                 <v-col cols="12" md="auto">
-                                                    <h6 class="text-subtitle-1 text-muted">
+                                                    <h6 class="text-subtitle-1 text-medium-emphasis">
                                                         <v-icon
                                                             class="mr-1"
                                                             color="primary"
@@ -136,7 +136,7 @@ const txPercentage = computed(() => {
                                                     </h6>
                                                 </v-col>
                                                 <v-col cols="12" md="auto">
-                                                    <h6 class="text-subtitle-1 text-muted">
+                                                    <h6 class="text-subtitle-1 text-medium-emphasis">
                                                         <v-icon
                                                             class="mr-1"
                                                             color="lightprimary"

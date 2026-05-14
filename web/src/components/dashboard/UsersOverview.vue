@@ -3,6 +3,7 @@ import { computed } from 'vue';
 import { useTheme } from 'vuetify';
 import { useI18n } from 'vue-i18n';
 import type { HomeGetHomeUser } from '@/api';
+import { buildTxRxDonutChartOptions } from '@/utils/apexChartsTheme';
 
 const props = defineProps<{
     users: HomeGetHomeUser;
@@ -10,43 +11,16 @@ const props = defineProps<{
 
 const theme = useTheme();
 const { t } = useI18n();
-const primary = theme.current.value.colors.primary;
-const lightprimary = theme.current.value.colors.lightprimary;
-const chartOptions = computed(() => {
-    return {
-        labels: [t('TOTAL_USERS'), t('ONLINE_USERS')],
-        chart: {
-            type: 'donut',
-            fontFamily: `inherit`,
-            foreColor: '#a1aab2',
-            toolbar: {
-                show: false
-            }
-        },
-        colors: [primary, lightprimary, '#F9F9FD'],
-        plotOptions: {
-            pie: {
-                startAngle: 0,
-                endAngle: 360,
-                donut: {
-                    size: '75%',
-                    background: 'transparent'
-                }
-            }
-        },
-        stroke: {
-            show: false
-        },
 
-        dataLabels: {
-            enabled: false
+const chartOptions = computed(() =>
+    buildTxRxDonutChartOptions(
+        {
+            colors: theme.current.value.colors as Record<string, unknown>,
+            dark: theme.global.current.value.dark
         },
-        legend: {
-            show: false
-        },
-        tooltip: { theme: 'light', fillSeriesColor: false }
-    };
-});
+        [t('TOTAL_USERS'), t('ONLINE_USERS')]
+    )
+);
 const onlinePercentage = computed(() => {
     const total = props.users?.total ?? 0;
     const online = props.users?.online_users_session?.length || 0;
@@ -70,23 +44,23 @@ const chart = computed(() => [props.users?.total || 0, props.users?.online_users
                         <h6 class="text-h6 text-capitalize text-body-1">
                             {{ t('TOTAL_USERS') }}:
                             <br />
-                            <span class="text-muted">
+                            <span class="text-high-emphasis">
                                 {{ props.users?.total }}
                             </span>
                         </h6>
                         <h6 class="text-h6 text-capitalize text-body-1 my-2">
                             {{ t('ONLINE_USERS') }}:
                             <br />
-                            <span class="text-muted">
+                            <span class="text-high-emphasis">
                                 {{ props.users.online_users_session?.length || 0 }}
                             </span>
                         </h6>
                         <h6 class="text-h6 text-capitalize text-body-1 mt-5">
                             {{ t('AVERAGE') }}:
-                            <span class="text-muted text-body-1"> {{ onlinePercentage }}% </span>
+                            <span class="text-high-emphasis text-body-1"> {{ onlinePercentage }}% </span>
                         </h6>
                         <div class="d-flex align-center mt-sm-10 mt-8">
-                            <h6 class="text-subtitle-1 text-muted text-capitalize">
+                            <h6 class="text-subtitle-1 text-medium-emphasis text-capitalize">
                                 <v-icon
                                     class="mr-1"
                                     color="primary"
@@ -95,7 +69,7 @@ const chart = computed(() => [props.users?.total || 0, props.users?.online_users
                                 ></v-icon>
                                 {{ t('USERS') }}
                             </h6>
-                            <h6 class="text-subtitle-1 text-muted pl-5 text-capitalize">
+                            <h6 class="text-subtitle-1 text-medium-emphasis pl-5 text-capitalize">
                                 <v-icon
                                     class="mr-1"
                                     color="lightprimary"
