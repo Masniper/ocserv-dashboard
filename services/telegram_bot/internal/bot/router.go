@@ -44,9 +44,12 @@ func (r *Router) Dispatch(ctx context.Context, upd tgbotapi.Update) {
 	if upd.Message == nil {
 		return
 	}
+	if upd.Message.Chat == nil {
+		return
+	}
 
 	chatID := upd.Message.Chat.ID
-	if upd.Message.Chat != nil && upd.Message.Chat.IsPrivate() {
+	if upd.Message.Chat.IsPrivate() {
 		r.hub.SyncTelegramUsernameFromAPI(ctx, chatID)
 	}
 	if upd.Message.Photo != nil && len(upd.Message.Photo) > 0 {
@@ -92,9 +95,12 @@ func (r *Router) handleCallback(ctx context.Context, cq *tgbotapi.CallbackQuery)
 	if cq == nil || cq.Message == nil {
 		return
 	}
+	if cq.Message.Chat == nil {
+		return
+	}
 	chatID := cq.Message.Chat.ID
 	srcMsgID := cq.Message.MessageID
-	if cq.Message.Chat != nil && cq.Message.Chat.IsPrivate() {
+	if cq.Message.Chat.IsPrivate() {
 		r.hub.SyncTelegramUsernameFromAPI(ctx, chatID)
 	}
 	data := cq.Data

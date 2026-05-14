@@ -62,7 +62,10 @@ func (s *Store) Get(chatID int64) *Session {
 		s.mu.Unlock()
 		return &Session{State: Idle}
 	}
-	return sess
+	// Return a value copy so callers can mutate without racing other goroutines
+	// that read/write the same map entry between Get and Set.
+	c := *sess
+	return &c
 }
 
 func (s *Store) Set(chatID int64, sess *Session) {

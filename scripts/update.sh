@@ -3,7 +3,9 @@
 # Script: update.sh
 # Description:
 #   One-shot in-place upgrade for an existing standalone systemd
-#   installation of the Ocserv dashboard. Backs up PostgreSQL (pg_dump),
+#   installation of the Ocserv dashboard. This script is not wired into Docker;
+#   for Docker deployments use image rebuild and container restart (e.g. compose).
+#   Backs up PostgreSQL (pg_dump),
 #   pulls the latest code, rebuilds the Go backend services, rebuilds and
 #   redeploys the Vite frontend, and restarts the systemd units.
 #
