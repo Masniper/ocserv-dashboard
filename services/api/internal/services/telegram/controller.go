@@ -582,7 +582,13 @@ func (ctl *Controller) notifyAwaitingPayment(req *models.TelegramRequest, opts *
 		return
 	}
 	lang := ctl.resolveNotifyLang(context.Background(), req.ChatID, settings)
-	msg := formatAwaitingPaymentMessage(lang, settings, opts)
+	var pkg *models.TelegramPackage
+	if req.PackageID != nil && *req.PackageID > 0 {
+		if p, err := ctl.repo.PackageByID(context.Background(), *req.PackageID); err == nil {
+			pkg = p
+		}
+	}
+	msg := formatAwaitingPaymentMessage(lang, settings, opts, pkg)
 	_ = sendTelegramHTMLMessage(settings.BotToken, req.ChatID, msg)
 }
 
@@ -612,7 +618,40 @@ func (ctl *Controller) notifyDelivery(chatID int64, settings *models.TelegramSet
 	_ = sendTelegramHTMLMessage(settings.BotToken, chatID, message)
 }
 
-func formatAwaitingPaymentMessage(lang string, settings *models.TelegramSettings, opts *awaitingPaymentOpts) string {
+// packageSummaryBlock appends plan title, deposit hint (PriceText), duration and quota for the awaiting-payment notice.
+func packageSummaryBlock(lang string, pkg *models.TelegramPackage) string {
+	if pkg == nil {
+		return ""
+	}
+	fa := lang == models.TelegramLanguageFA
+	title := htmlEsc(pkg.Title)
+	price := strings.TrimSpace(pkg.PriceText)
+	if price == "" {
+		if fa {
+			price = "— <i>(مبلغ را از ادمین بپرسید)</i>"
+		} else {
+			price = "— <i>(ask admin for the exact amount)</i>"
+		}
+	} else {
+		price = htmlEsc(price)
+	}
+	if fa {
+		return fmt.Sprintf(
+			"\n\n\u200f<b>📦 پکیج انتخابی:</b> %s\n"+
+				"\u200f<b>💵 مبلغ / نحوهٔ واریز:</b> %s\n"+
+				"\u200f<b>📅 مدت:</b> %d روز  |  <b>💾 حجم:</b> %d GB",
+			title, price, pkg.Days, pkg.TrafficSizeGB,
+		)
+	}
+	return fmt.Sprintf(
+		"\n\n📦 <b>Selected plan:</b> %s\n"+
+			"💵 <b>Amount / how to pay:</b> %s\n"+
+			"📅 <b>Duration:</b> %d days  |  💾 <b>Quota:</b> %d GB",
+		title, price, pkg.Days, pkg.TrafficSizeGB,
+	)
+}
+
+func formatAwaitingPaymentMessage(lang string, settings *models.TelegramSettings, opts *awaitingPaymentOpts, pkg *models.TelegramPackage) string {
 	cardNum := ""
 	cardHold := ""
 	if settings != nil {
@@ -675,12 +714,13 @@ func formatAwaitingPaymentMessage(lang string, settings *models.TelegramSettings
 		receiptLine = "\n\n🧾 Send the receipt as a <b>photo</b> in this chat.\n📎 Photo only (not a file or link)."
 	}
 
+	pkgBlock := packageSummaryBlock(lang, pkg)
 	support := supportLine(settings)
 	if fa {
-		return "\u200f<blockquote><b>درخواست شما تایید شد! ✅</b>" +
+		return "\u200f<blockquote><b>درخواست شما تایید شد! ✅</b>" + pkgBlock +
 			replyBlock + cardLine + receiptLine + missingCard + "</blockquote>" + support
 	}
-	return "✅ <b>Your request has been approved!</b>" +
+	return "✅ <b>Your request has been approved!</b>" + pkgBlock +
 		replyBlock + cardLine + receiptLine + missingCard + support
 }
 
