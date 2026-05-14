@@ -98,12 +98,23 @@ export const TelegramAPI = {
     deletePackage: (id: number) => api.delete(`/telegram/packages/${id}`, auth()),
 
     // Requests
-    listRequests: (params: { status?: string; type?: string; page?: number; size?: number } = {}) => {
+    listRequests: (
+        params: {
+            status?: string;
+            type?: string;
+            page?: number;
+            size?: number;
+            sort?: string;
+            order?: string;
+        } = {}
+    ) => {
         const query = new URLSearchParams();
         if (params.status) query.set('status', params.status);
         if (params.type) query.set('type', params.type);
         if (params.page) query.set('page', String(params.page));
         if (params.size) query.set('size', String(params.size));
+        if (params.sort) query.set('sort', params.sort);
+        if (params.order) query.set('order', params.order);
         const qs = query.toString();
         return api.get<TelegramRequestsResponse>(`/telegram/requests${qs ? `?${qs}` : ''}`, auth());
     },

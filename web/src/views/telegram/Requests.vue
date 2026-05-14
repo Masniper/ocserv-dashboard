@@ -1,26 +1,31 @@
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import {
     TelegramAPI,
     type TelegramRequestModel,
     type TelegramPackage
 } from '@/api/telegram';
-import { OcservGroupsApi } from '@/api';
+import { OcservGroupsApi, OcservUsersGetSortEnum } from '@/api';
 import { getAuthorization } from '@/utils/request';
 import { useSnackbarStore } from '@/stores/snackbar';
 import UiParentCard from '@/components/shared/UiParentCard.vue';
-import SimpleTablePagination from '@/components/shared/SimpleTablePagination.vue';
+import Pagination from '@/components/shared/Pagination.vue';
+import type { Meta } from '@/types/metaTypes/MetaType';
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const snackbar = useSnackbarStore();
 
 const loading = ref(false);
 const tab = ref<'pending' | 'awaiting_payment' | 'payment_uploaded' | 'history'>('pending');
 const items = ref<TelegramRequestModel[]>([]);
-const meta = reactive({
+const meta = reactive<Meta>({
     page: 1,
-    size: 20,
+    size: 10,
+    sort: OcservUsersGetSortEnum.ASC,
     total_records: 0
 });
 
@@ -48,15 +53,28 @@ const STATUS_BY_TAB: Record<string, string> = {
 const load = async () => {
     loading.value = true;
     try {
-        const params: any = { page: meta.page, size: meta.size };
+        const page = Number(route.query.page) || 1;
+        const size = Math.max(Number(route.query.size) || 10, 1);
+        const sort = route.query.sort === 'DESC' ? 'DESC' : 'ASC';
         const status = STATUS_BY_TAB[tab.value];
-        if (status) params.status = status;
-        const res = await TelegramAPI.listRequests(params);
+        const res = await TelegramAPI.listRequests({
+            page,
+            size,
+            sort,
+            order: 'created_at',
+            ...(status ? { status } : {})
+        });
         items.value = res.data.result || [];
-        meta.total_records = res.data.meta.total_records;
+        Object.assign(meta, res.data.meta);
+        meta.sort = route.query.sort === 'DESC' ? OcservUsersGetSortEnum.DESC : OcservUsersGetSortEnum.ASC;
     } finally {
         loading.value = false;
     }
+};
+
+const updateMeta = (newMeta: Meta) => {
+    Object.assign(meta, newMeta);
+    load();
 };
 
 const loadPackages = async () => {
@@ -184,9 +202,10 @@ const removeRequest = async (r: TelegramRequestModel) => {
     try {
         await TelegramAPI.deleteRequest(r.id);
         snackbar.show({ id: 1, message: t('TELEGRAM_REQUEST_DELETED'), color: 'success', timeout: 3000 });
+        const p = Number(route.query.page) || 1;
         await load();
-        if (!items.value.length && meta.page > 1) {
-            meta.page -= 1;
+        if (!items.value.length && p > 1) {
+            await router.replace({ query: { ...route.query, page: String(p - 1) } });
             await load();
         }
     } catch {
@@ -199,20 +218,9 @@ const removeRequest = async (r: TelegramRequestModel) => {
 const isRequestDeletable = (r: TelegramRequestModel) =>
     !['pending', 'awaiting_payment', 'payment_uploaded'].includes(r.status);
 
-const onPageSizeChange = (v: number) => {
-    meta.size = v;
-    meta.page = 1;
-    load();
-};
-
-const onPageChange = (p: number) => {
-    meta.page = p;
-    load();
-};
-
-watch(tab, () => {
-    meta.page = 1;
-    load();
+watch(tab, async () => {
+    await router.replace({ query: { ...route.query, page: '1' } });
+    await load();
 });
 
 onMounted(async () => {
@@ -229,67 +237,62 @@ onBeforeUnmount(() => {
     <v-row>
         <v-col cols="12">
             <UiParentCard :title="t('TELEGRAM_REQUESTS')">
-                <v-tabs v-model="tab" color="primary" align-tabs="start" class="mb-3 px-md-15">
-                    <v-tab value="pending">{{ t('TELEGRAM_TAB_PENDING') }}</v-tab>
-                    <v-tab value="awaiting_payment">{{ t('TELEGRAM_TAB_AWAITING') }}</v-tab>
-                    <v-tab value="payment_uploaded">{{ t('TELEGRAM_TAB_UPLOADED') }}</v-tab>
-                    <v-tab value="history">{{ t('TELEGRAM_TAB_HISTORY') }}</v-tab>
-                </v-tabs>
-
                 <v-progress-linear :active="loading" indeterminate />
 
-                <v-table density="comfortable" class="px-md-15">
-                    <thead>
-                        <tr class="text-capitalize bg-lightprimary">
-                            <th class="text-left">#</th>
-                            <th class="text-left">{{ t('TELEGRAM_REQUEST_CONTACT') }}</th>
-                            <th class="text-left">{{ t('TYPE') }}</th>
-                            <th class="text-left">{{ t('PACKAGE') }}</th>
-                            <th class="text-left">{{ t('STATUS') }}</th>
-                            <th class="text-left">{{ t('CREATED_AT') }}</th>
-                            <th class="text-left">{{ t('ACTION') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="r in items" :key="r.id">
-                            <td>{{ r.id }}</td>
-                            <td>{{ displayContact(r) }}</td>
-                            <td>{{ r.type }}</td>
-                            <td>{{ findPackageTitle(r.package_id) }}</td>
-                            <td>
-                                <v-chip size="small" variant="tonal">{{ r.status }}</v-chip>
-                            </td>
-                            <td>{{ new Date(r.created_at).toLocaleString() }}</td>
-                            <td>
-                                <v-btn size="small" variant="text" @click="openDetails(r)">
-                                    {{ t('VIEW') }}
-                                </v-btn>
-                                <v-btn
-                                    v-if="tab === 'history' && isRequestDeletable(r)"
-                                    icon="mdi-delete"
-                                    size="small"
-                                    variant="text"
-                                    color="error"
-                                    :title="t('DELETE')"
-                                    @click="removeRequest(r)"
-                                />
-                            </td>
-                        </tr>
-                        <tr v-if="!items.length">
-                            <td colspan="7" class="text-center text-grey">
-                                {{ t('NO_DATA') }}
-                            </td>
-                        </tr>
-                    </tbody>
-                </v-table>
+                <div v-if="!loading">
+                    <v-tabs v-model="tab" color="primary" align-tabs="start" class="mb-3 px-md-15">
+                        <v-tab value="pending">{{ t('TELEGRAM_TAB_PENDING') }}</v-tab>
+                        <v-tab value="awaiting_payment">{{ t('TELEGRAM_TAB_AWAITING') }}</v-tab>
+                        <v-tab value="payment_uploaded">{{ t('TELEGRAM_TAB_UPLOADED') }}</v-tab>
+                        <v-tab value="history">{{ t('TELEGRAM_TAB_HISTORY') }}</v-tab>
+                    </v-tabs>
 
-                <SimpleTablePagination
-                    :total-records="meta.total_records"
-                    :page="meta.page"
-                    :size="meta.size"
-                    @update:page="onPageChange"
-                    @update:size="onPageSizeChange"
-                />
+                    <v-table v-if="items.length > 0" density="comfortable" class="px-md-15">
+                        <thead>
+                            <tr class="text-capitalize bg-lightprimary">
+                                <th class="text-left">#</th>
+                                <th class="text-left">{{ t('TELEGRAM_REQUEST_CONTACT') }}</th>
+                                <th class="text-left">{{ t('TYPE') }}</th>
+                                <th class="text-left">{{ t('PACKAGE') }}</th>
+                                <th class="text-left">{{ t('STATUS') }}</th>
+                                <th class="text-left">{{ t('CREATED_AT') }}</th>
+                                <th class="text-left">{{ t('ACTION') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="r in items" :key="r.id">
+                                <td>{{ r.id }}</td>
+                                <td>{{ displayContact(r) }}</td>
+                                <td>{{ r.type }}</td>
+                                <td>{{ findPackageTitle(r.package_id) }}</td>
+                                <td>
+                                    <v-chip size="small" variant="tonal">{{ r.status }}</v-chip>
+                                </td>
+                                <td>{{ new Date(r.created_at).toLocaleString() }}</td>
+                                <td>
+                                    <v-btn size="small" variant="text" @click="openDetails(r)">
+                                        {{ t('VIEW') }}
+                                    </v-btn>
+                                    <v-btn
+                                        v-if="tab === 'history' && isRequestDeletable(r)"
+                                        icon="mdi-delete"
+                                        size="small"
+                                        variant="text"
+                                        color="error"
+                                        :title="t('DELETE')"
+                                        @click="removeRequest(r)"
+                                    />
+                                </td>
+                            </tr>
+                        </tbody>
+                    </v-table>
+                </div>
+
+                <div v-if="loading || items.length == 0" class="ms-md-5 mb-md-5 text-capitalize">
+                    {{ t('NO_DATA') }}
+                </div>
+
+                <Pagination :totalRecords="meta.total_records" @update="updateMeta" />
             </UiParentCard>
         </v-col>
 
@@ -324,7 +327,11 @@ onBeforeUnmount(() => {
                             <div v-if="receiptObjectUrl">
                                 <strong>{{ t('RECEIPT') }}:</strong>
                                 <a :href="receiptObjectUrl" target="_blank">
-                                    <img :src="receiptObjectUrl" style="max-width: 100%; max-height: 280px; margin-top: 8px;" alt="receipt" />
+                                    <img
+                                        :src="receiptObjectUrl"
+                                        style="max-width: 100%; max-height: 280px; margin-top: 8px"
+                                        alt="receipt"
+                                    />
                                 </a>
                             </div>
                             <div v-else class="text-grey">
