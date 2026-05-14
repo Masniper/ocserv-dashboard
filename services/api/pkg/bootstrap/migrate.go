@@ -16,6 +16,7 @@ var Migrations = []*gormigrate.Migration{
 	migrations.Migration005,
 	migrations.Migration006,
 	migrations.Migration007,
+	migrations.Migration008,
 }
 
 func Migrate() {

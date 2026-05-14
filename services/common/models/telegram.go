@@ -80,6 +80,10 @@ type TelegramRequest struct {
 	UserMessage      string     `json:"user_message" gorm:"type:text"`
 	AdminNote        string     `json:"admin_note" gorm:"type:text"`
 	DeliveredAt      *time.Time `json:"delivered_at"`
-	CreatedAt        time.Time  `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt        time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// AwaitingPaymentMessageID is the Telegram message_id of the bot message sent when
+	// the request moved to awaiting_payment (may contain card details). Used to delete
+	// that message if the request is later rejected.
+	AwaitingPaymentMessageID *int64    `json:"awaiting_payment_message_id"`
+	CreatedAt                time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt                time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 }

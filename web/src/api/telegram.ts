@@ -56,6 +56,7 @@ export interface TelegramRequestModel {
     user_message: string;
     admin_note: string;
     delivered_at?: string;
+    awaiting_payment_message_id?: number;
     created_at: string;
     updated_at: string;
 }

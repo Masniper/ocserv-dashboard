@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -589,7 +590,11 @@ func (ctl *Controller) notifyAwaitingPayment(req *models.TelegramRequest, opts *
 		}
 	}
 	msg := formatAwaitingPaymentMessage(lang, settings, opts, pkg)
-	_ = sendTelegramHTMLMessage(settings.BotToken, req.ChatID, msg)
+	msgID, err := sendTelegramHTMLMessageWithID(settings.BotToken, req.ChatID, msg)
+	if err != nil || msgID <= 0 {
+		return
+	}
+	_ = ctl.repo.SetAwaitingPaymentMessageID(context.Background(), req.ID, msgID)
 }
 
 func (ctl *Controller) resolveNotifyLang(ctx context.Context, chatID int64, settings *models.TelegramSettings) string {
@@ -606,6 +611,10 @@ func (ctl *Controller) notifyRejected(req *models.TelegramRequest) {
 	settings, err := ctl.repo.Settings(context.Background())
 	if err != nil || settings.BotToken == "" || !settings.Enabled {
 		return
+	}
+	if req.AwaitingPaymentMessageID != nil && *req.AwaitingPaymentMessageID > 0 {
+		deleteTelegramMessage(settings.BotToken, req.ChatID, *req.AwaitingPaymentMessageID)
+		_ = ctl.repo.ClearAwaitingPaymentMessageID(context.Background(), req.ID)
 	}
 	msg := formatRejectedMessage(settings, req.AdminNote)
 	_ = sendTelegramHTMLMessage(settings.BotToken, req.ChatID, msg)
@@ -874,14 +883,20 @@ func htmlEsc(s string) string {
 }
 
 func sendTelegramMessage(token string, chatID int64, text string) error {
-	return sendTelegramMessageWithMode(token, chatID, text, "")
+	_, err := sendTelegramMessageWithMode(token, chatID, text, "")
+	return err
 }
 
 func sendTelegramHTMLMessage(token string, chatID int64, text string) error {
+	_, err := sendTelegramHTMLMessageWithID(token, chatID, text)
+	return err
+}
+
+func sendTelegramHTMLMessageWithID(token string, chatID int64, text string) (int64, error) {
 	return sendTelegramMessageWithMode(token, chatID, text, "HTML")
 }
 
-func sendTelegramMessageWithMode(token string, chatID int64, text, parseMode string) error {
+func sendTelegramMessageWithMode(token string, chatID int64, text, parseMode string) (int64, error) {
 	endpoint := fmt.Sprintf("%s/bot%s/sendMessage", telegramAPIBase, token)
 	form := url.Values{}
 	form.Set("chat_id", strconv.FormatInt(chatID, 10))
@@ -893,14 +908,37 @@ func sendTelegramMessageWithMode(token string, chatID int64, text, parseMode str
 	client := &http.Client{Timeout: telegramHTTPTimeout}
 	resp, err := client.PostForm(endpoint, form)
 	if err != nil {
-		return err
+		return 0, err
 	}
 	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("telegram sendMessage status=%d body=%s", resp.StatusCode, string(body))
+		return 0, fmt.Errorf("telegram sendMessage status=%d body=%s", resp.StatusCode, string(body))
 	}
-	return nil
+	var envelope struct {
+		OK     bool `json:"ok"`
+		Result struct {
+			MessageID int64 `json:"message_id"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &envelope); err != nil || !envelope.OK {
+		return 0, fmt.Errorf("telegram sendMessage: invalid or unsuccessful response: %s", string(body))
+	}
+	return envelope.Result.MessageID, nil
+}
+
+func deleteTelegramMessage(token string, chatID, messageID int64) {
+	endpoint := fmt.Sprintf("%s/bot%s/deleteMessage", telegramAPIBase, token)
+	form := url.Values{}
+	form.Set("chat_id", strconv.FormatInt(chatID, 10))
+	form.Set("message_id", strconv.FormatInt(messageID, 10))
+	client := &http.Client{Timeout: telegramHTTPTimeout}
+	resp, err := client.PostForm(endpoint, form)
+	if err != nil {
+		return
+	}
+	defer resp.Body.Close()
+	_, _ = io.ReadAll(resp.Body)
 }
 
 func generateUsername() string {

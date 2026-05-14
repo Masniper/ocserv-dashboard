@@ -41,6 +41,8 @@ type TelegramRequestRepo interface {
 	Requests(ctx context.Context, pagination *request.Pagination, status, requestType string) ([]models.TelegramRequest, int64, error)
 	RequestByID(ctx context.Context, id uint) (*models.TelegramRequest, error)
 	UpdateRequestStatus(ctx context.Context, id uint, status string, adminNote *string) (*models.TelegramRequest, error)
+	SetAwaitingPaymentMessageID(ctx context.Context, requestID uint, messageID int64) error
+	ClearAwaitingPaymentMessageID(ctx context.Context, requestID uint) error
 	MarkDelivered(ctx context.Context, id uint, ocservUserID *uint) error
 }
 
@@ -228,6 +230,20 @@ func (r *TelegramRepository) UpdateRequestStatus(ctx context.Context, id uint, s
 		return nil, err
 	}
 	return r.RequestByID(ctx, id)
+}
+
+func (r *TelegramRepository) SetAwaitingPaymentMessageID(ctx context.Context, requestID uint, messageID int64) error {
+	return r.db.WithContext(ctx).
+		Model(&models.TelegramRequest{}).
+		Where("id = ?", requestID).
+		Update("awaiting_payment_message_id", messageID).Error
+}
+
+func (r *TelegramRepository) ClearAwaitingPaymentMessageID(ctx context.Context, requestID uint) error {
+	return r.db.WithContext(ctx).
+		Model(&models.TelegramRequest{}).
+		Where("id = ?", requestID).
+		Updates(map[string]interface{}{"awaiting_payment_message_id": nil}).Error
 }
 
 func (r *TelegramRepository) MarkDelivered(ctx context.Context, id uint, ocservUserID *uint) error {
