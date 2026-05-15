@@ -13,6 +13,7 @@ import (
 	"github.com/mmtaee/ocserv-dashboard/common/pkg/database"
 	"github.com/mmtaee/ocserv-dashboard/common/pkg/logger"
 	"github.com/mmtaee/ocserv-dashboard/telegram_bot/internal/bot"
+	"github.com/mmtaee/ocserv-dashboard/telegram_bot/internal/i18n"
 	"github.com/mmtaee/ocserv-dashboard/telegram_bot/internal/notifier"
 )
 
@@ -35,6 +36,7 @@ func main() {
 
 	logger.Init(ctx, 100)
 	config.Init(debug, "", 0)
+	i18n.Init()
 	database.Connect()
 
 	dir := receiptStorageDir()

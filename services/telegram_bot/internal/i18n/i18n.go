@@ -1,9 +1,25 @@
+// Package i18n holds Telegram bot UI strings loaded from JSON.
+// Override or extend with TELEGRAM_BOT_I18N_PATH pointing to a JSON file with the same shape
+// as default.json (language code -> key -> format string for fmt.Sprintf).
+// See docs/telegram-translations.md.
 package i18n
 
-import "github.com/mmtaee/ocserv-dashboard/common/models"
+import (
+	_ "embed"
+	"encoding/json"
+	"fmt"
+	"os"
+	"strings"
+	"sync"
 
-// Key is the catalog of translatable bot strings. Adding a new string requires
-// providing translations in every language map below.
+	"github.com/mmtaee/ocserv-dashboard/common/models"
+)
+
+//go:embed default.json
+var defaultEmbedded []byte
+
+// Key is the catalog of translatable bot strings. Adding a new string requires a key here
+// and translations in default.json (and optional TELEGRAM_BOT_I18N_PATH overlay) per language.
 type Key string
 
 const (
@@ -51,7 +67,6 @@ const (
 	OcservDeactivated Key = "ocserv_deactivated"
 	RateLimited       Key = "rate_limited"
 
-	// Admin-only catalog
 	AdminWelcome     Key = "admin_welcome"
 	AdminMenu        Key = "admin_menu"
 	BtnAdminPending  Key = "btn_admin_pending"
@@ -66,36 +81,77 @@ const (
 	AdminRequestRow  Key = "admin_request_row"
 )
 
-var catalog = map[string]map[Key]string{
-	models.TelegramLanguageEN: en,
-	models.TelegramLanguageFA: fa,
+var (
+	mu    sync.RWMutex
+	store map[string]map[string]string
+	once  sync.Once
+)
+
+// Init loads embedded defaults and optional TELEGRAM_BOT_I18N_PATH merge. Safe to call many times.
+func Init() {
+	once.Do(func() {
+		store = make(map[string]map[string]string)
+		if err := mergeJSON(defaultEmbedded); err != nil {
+			panic("i18n: embedded default.json: " + err.Error())
+		}
+		if p := strings.TrimSpace(os.Getenv("TELEGRAM_BOT_I18N_PATH")); p != "" {
+			if b, err := os.ReadFile(p); err == nil {
+				_ = mergeJSON(b)
+			}
+		}
+	})
+}
+
+func mergeJSON(b []byte) error {
+	var raw map[string]map[string]string
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for lang, m := range raw {
+		lang = strings.ToLower(strings.TrimSpace(lang))
+		if store[lang] == nil {
+			store[lang] = make(map[string]string)
+		}
+		for k, v := range m {
+			store[lang][k] = v
+		}
+	}
+	return nil
 }
 
 // T returns the translation for the given language, falling back to English
 // when the language is missing or the key is not translated.
 func T(lang string, key Key, args ...interface{}) string {
+	Init()
+	lang = strings.ToLower(strings.TrimSpace(lang))
 	if lang == "" {
 		lang = models.TelegramLanguageEN
 	}
-	bundle, ok := catalog[lang]
-	if !ok {
-		bundle = en
+	k := string(key)
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	value, ok := lookup(lang, k)
+	if !ok && lang != models.TelegramLanguageEN {
+		value, ok = lookup(models.TelegramLanguageEN, k)
 	}
-	value, ok := bundle[key]
 	if !ok {
-		if fallback, ok2 := en[key]; ok2 {
-			value = fallback
-		} else {
-			value = string(key)
-		}
+		return k
 	}
 	if len(args) == 0 {
 		return value
 	}
-	return sprintf(value, args...)
+	return fmt.Sprintf(value, args...)
 }
 
-// sprintf is a tiny wrapper over fmt.Sprintf isolated for testability.
-func sprintf(format string, args ...interface{}) string {
-	return fmtSprintf(format, args...)
+func lookup(lang, key string) (string, bool) {
+	bundle, ok := store[lang]
+	if !ok {
+		return "", false
+	}
+	v, ok := bundle[key]
+	return v, ok
 }
